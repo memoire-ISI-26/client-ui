@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:client_ui/screens/login_screen.dart';
+import 'package:client_ui/screens/achat_credit_screen.dart';
+import 'package:client_ui/screens/achat_internet_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final String token;
@@ -24,57 +26,23 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: darkBgColor,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.settings_rounded, color: Colors.white),
+          tooltip: "Paramètres",
+          onPressed: () => _showSettingsBottomSheet(context, darkCardColor, orangeColor),
+        ),
         title: const Text(
           "Tableau de Bord Client",
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.white),
-            tooltip: "Déconnexion",
+            icon: const Icon(Icons.search_rounded, color: Colors.white),
+            tooltip: "Recherche",
             onPressed: () {
-              showDialog(
+              showSearch(
                 context: context,
-                builder: (BuildContext context) {
-                  return AlertDialog(
-                    backgroundColor: const Color(0xFF1E1E1E),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(color: Colors.grey[800]!, width: 0.5),
-                    ),
-                    title: const Text(
-                      "Confirmation",
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                    content: const Text(
-                      "Voulez-vous vraiment vous déconnecter ?",
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text(
-                          "Annuler",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(
-                              builder: (context) => const LoginScreen(),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          "Se déconnecter",
-                          style: TextStyle(color: orangeColor, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  );
-                },
+                delegate: MaxItSearchDelegate(),
               );
             },
           ),
@@ -122,7 +90,7 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 24),
 
               const Text(
-                "DÉTAILS DE LA SESSION",
+                "NOS SERVICES",
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -131,43 +99,54 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              Card(
-                color: darkCardColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: Colors.grey[800]!, width: 0.5),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildDetailRow("Rôle", role, orangeColor),
-                      const Divider(color: Colors.grey, height: 24, thickness: 0.2),
-                      const Text(
-                        "Jeton JWT",
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.black26,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          token,
-                          maxLines: 4,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.white70,
-                            fontFamily: 'monospace',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+              Expanded(
+                child: GridView.count(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 1.3,
+                  children: [
+                    _buildServiceItem(
+                      context,
+                      "Achat Crédit",
+                      Icons.phone_android_rounded,
+                      orangeColor,
+                      darkCardColor,
+                      () => _handleAchatCreditTap(context),
+                    ),
+                    _buildServiceItem(
+                      context,
+                      "Achat Illiflex",
+                      Icons.swap_calls_rounded,
+                      orangeColor,
+                      darkCardColor,
+                      () => _handleServiceTap(context, "Achat Illiflex"),
+                    ),
+                    _buildServiceItem(
+                      context,
+                      "Achat Illimix",
+                      Icons.all_inclusive_rounded,
+                      orangeColor,
+                      darkCardColor,
+                      () => _handleServiceTap(context, "Achat Illimix"),
+                    ),
+                    _buildServiceItem(
+                      context,
+                      "Achat Internet",
+                      Icons.language_rounded,
+                      orangeColor,
+                      darkCardColor,
+                      () => _handleAchatInternetTap(context),
+                    ),
+                    _buildServiceItem(
+                      context,
+                      "Rapido",
+                      Icons.directions_car_rounded,
+                      orangeColor,
+                      darkCardColor,
+                      () => _handleServiceTap(context, "Rapido"),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -177,26 +156,340 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(String label, String value, Color color) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.bold),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(6),
+  void _showSettingsBottomSheet(BuildContext context, Color darkCardColor, Color orangeColor) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: darkCardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[600],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const Text(
+                  "Paramètres",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.person_outline_rounded, color: Colors.white70),
+                  title: const Text("Mon Profil", style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Profil bientôt disponible"),
+                        backgroundColor: Colors.white24,
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.notifications_none_rounded, color: Colors.white70),
+                  title: const Text("Notifications", style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Notifications bientôt disponibles"),
+                        backgroundColor: Colors.white24,
+                      ),
+                    );
+                  },
+                ),
+                const Divider(color: Colors.white12),
+                ListTile(
+                  leading: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+                  title: const Text(
+                    "Déconnexion",
+                    style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context); // Close bottom sheet
+                    _showLogoutConfirmation(context, orangeColor);
+                  },
+                ),
+              ],
+            ),
           ),
-          child: Text(
-            value,
-            style: TextStyle(fontSize: 14, color: color, fontWeight: FontWeight.bold),
+        );
+      },
+    );
+  }
+
+  void _showLogoutConfirmation(BuildContext context, Color orangeColor) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E1E1E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: Colors.grey[800]!, width: 0.5),
+          ),
+          title: const Text(
+            "Confirmation",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            "Voulez-vous vraiment vous déconnecter ?",
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                "Annuler",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => const LoginScreen(),
+                  ),
+                );
+              },
+              child: Text(
+                "Se déconnecter",
+                style: TextStyle(color: orangeColor, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildServiceItem(
+    BuildContext context,
+    String title,
+    IconData icon,
+    Color orangeColor,
+    Color darkCardColor,
+    VoidCallback onTap,
+  ) {
+    return Card(
+      margin: EdgeInsets.zero,
+      color: darkCardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey[800]!, width: 0.5),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: orangeColor,
+                size: 36,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
+    );
+  }
+
+  void _handleServiceTap(BuildContext context, String serviceName) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Service '$serviceName' sélectionné"),
+        backgroundColor: const Color(0xFFFF7900),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  void _handleAchatCreditTap(BuildContext context) async {
+    final success = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AchatCreditScreen(
+          myNumber: identifier,
+          token: token,
+        ),
+      ),
+    );
+
+    if (success == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Achat de crédit effectué avec succès !"),
+          backgroundColor: const Color(0xFFFF7900),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+  }
+
+  void _handleAchatInternetTap(BuildContext context) async {
+    final success = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AchatInternetScreen(
+          myNumber: identifier,
+          token: token,
+        ),
+      ),
+    );
+
+    if (success == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Achat de Pass Internet effectué avec succès !"),
+          backgroundColor: const Color(0xFFFF7900),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+  }
+}
+
+class MaxItSearchDelegate extends SearchDelegate<String> {
+  final List<String> servicesList = [
+    "Achat Crédit",
+    "Achat Illiflex",
+    "Achat Illimix",
+    "Achat Internet",
+    "Rapido",
+  ];
+
+  @override
+  String get searchFieldLabel => 'Rechercher un service...';
+
+  @override
+  ThemeData appBarTheme(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return theme.copyWith(
+      appBarTheme: theme.appBarTheme.copyWith(
+        backgroundColor: const Color(0xFF1E1E1E),
+      ),
+      inputDecorationTheme: const InputDecorationTheme(
+        hintStyle: TextStyle(color: Colors.grey),
+        border: InputBorder.none,
+      ),
+      textTheme: const TextTheme(
+        titleLarge: TextStyle(color: Colors.white),
+      ),
+    );
+  }
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.clear_rounded, color: Colors.white70),
+        onPressed: () {
+          query = '';
+        },
+      ),
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back_rounded, color: Colors.white70),
+      onPressed: () {
+        close(context, '');
+      },
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    final results = servicesList
+        .where((service) => service.toLowerCase().contains(query.toLowerCase()))
+        .toList();
+
+    return Container(
+      color: const Color(0xFF121212),
+      child: ListView.builder(
+        itemCount: results.length,
+        itemBuilder: (context, index) {
+          return ListTile(
+            title: Text(results[index], style: const TextStyle(color: Colors.white)),
+            leading: const Icon(Icons.bolt_rounded, color: Color(0xFFFF7900)),
+            onTap: () {
+              close(context, results[index]);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Service sélectionné : ${results[index]}'),
+                  backgroundColor: const Color(0xFFFF7900),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    final suggestions = servicesList
+        .where((service) => service.toLowerCase().contains(query.toLowerCase()))
+        .toList();
+
+    return Container(
+      color: const Color(0xFF121212),
+      child: ListView.builder(
+        itemCount: suggestions.length,
+        itemBuilder: (context, index) {
+          return ListTile(
+            title: Text(suggestions[index], style: const TextStyle(color: Colors.white)),
+            leading: const Icon(Icons.search_rounded, color: Colors.grey),
+            onTap: () {
+              query = suggestions[index];
+              showResults(context);
+            },
+          );
+        },
+      ),
     );
   }
 }
