@@ -44,7 +44,8 @@ class ApiService {
     // 4. Repli par défaut selon la plateforme (ex: émulateur Android)
     try {
       if (Platform.isAndroid) {
-        _cachedBaseUrl = 'http://10.96.18.217:8765';
+        _cachedBaseUrl = 'http://10.96.18.178:8765';
+        //u_cachedBaseUrl = 'http://192.168.1.12:8765';
         return _cachedBaseUrl!;
       }
     } catch (_) {}
@@ -166,6 +167,152 @@ class ApiService {
     } catch (e) {
       if (e is Exception) rethrow;
       throw Exception('Erreur réseau lors de l\'inscription : $e');
+    }
+  }
+
+  /// Récupère le solde du compte principal pour un numéro donné.
+  static Future<double> getBalance(String number, String token) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/accounts/number/$number/balance');
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return double.parse(response.body);
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Impossible de récupérer le solde (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de la récupération du solde : $e');
+    }
+  }
+
+  /// Effectue un achat de crédit.
+  static Future<Map<String, dynamic>> purchaseCredit({
+    required String sender,
+    required String receiver,
+    required double amount,
+    required String token,
+  }) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/transactions/purchase');
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'sender': sender,
+          'receiver': receiver,
+          'amount': amount,
+          'type': 'ACHAT_CREDIT',
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Échec de l\'achat (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de la validation de la transaction : $e');
+    }
+  }
+
+  /// Récupère tous les pass internet.
+  static Future<List<dynamic>> getPassInternet(String token) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/pricing/pass-internet');
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['data'] as List<dynamic>; // ApiResponse wraps list in 'data' field
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Impossible de récupérer les pass (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de la récupération des pass : $e');
+    }
+  }
+
+  /// Achète un pass internet.
+  static Future<Map<String, dynamic>> purchasePassInternet({
+    required String receiverNumber,
+    required int passId,
+    required String passName,
+    required double amount,
+    required String paymentMethod, // "WALLET" or "CREDIT"
+    required String token,
+  }) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/pricing/purchase/pass-internet');
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'receiverNumber': receiverNumber,
+          'passId': passId,
+          'passName': passName,
+          'amount': amount,
+          'paymentMethod': paymentMethod,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Échec de l\'achat (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de la validation de la transaction : $e');
+    }
+  }
+
+  /// Récupère les détails complets du compte (dont balance et callCredit).
+  static Future<Map<String, dynamic>> getAccount(String number, String token) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/accounts/number/$number');
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Impossible de récupérer le compte (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de la récupération des détails du compte : $e');
     }
   }
 }
