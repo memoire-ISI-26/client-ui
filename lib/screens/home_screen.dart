@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:client_ui/screens/login_screen.dart';
 import 'package:client_ui/screens/achat_credit_screen.dart';
 import 'package:client_ui/screens/achat_internet_screen.dart';
+import 'package:client_ui/screens/achat_illimix_screen.dart';
+import 'package:client_ui/screens/achat_illiflex_screen.dart';
+import 'package:client_ui/screens/rapido_screen.dart';
+import 'package:client_ui/screens/transfert_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final String token;
@@ -120,7 +124,7 @@ class HomeScreen extends StatelessWidget {
                       Icons.swap_calls_rounded,
                       orangeColor,
                       darkCardColor,
-                      () => _handleServiceTap(context, "Achat Illiflex"),
+                      () => _handleAchatIlliflexTap(context),
                     ),
                     _buildServiceItem(
                       context,
@@ -128,7 +132,7 @@ class HomeScreen extends StatelessWidget {
                       Icons.all_inclusive_rounded,
                       orangeColor,
                       darkCardColor,
-                      () => _handleServiceTap(context, "Achat Illimix"),
+                      () => _handleAchatIllimixTap(context),
                     ),
                     _buildServiceItem(
                       context,
@@ -144,7 +148,15 @@ class HomeScreen extends StatelessWidget {
                       Icons.directions_car_rounded,
                       orangeColor,
                       darkCardColor,
-                      () => _handleServiceTap(context, "Rapido"),
+                      () => _handleRapidoTap(context),
+                    ),
+                    _buildServiceItem(
+                      context,
+                      "Transfert",
+                      Icons.swap_horiz_rounded,
+                      orangeColor,
+                      darkCardColor,
+                      () => _handleTransfertTap(context),
                     ),
                   ],
                 ),
@@ -325,19 +337,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _handleServiceTap(BuildContext context, String serviceName) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Service '$serviceName' sélectionné"),
-        backgroundColor: const Color(0xFFFF7900),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-    );
-  }
-
   void _handleAchatCreditTap(BuildContext context) async {
     final success = await Navigator.push<bool>(
       context,
@@ -387,6 +386,106 @@ class HomeScreen extends StatelessWidget {
       );
     }
   }
+
+  void _handleAchatIllimixTap(BuildContext context) async {
+    final success = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AchatIllimixScreen(
+          myNumber: identifier,
+          token: token,
+        ),
+      ),
+    );
+
+    if (success == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Achat de Pass Illimix effectué avec succès !"),
+          backgroundColor: const Color(0xFFFF7900),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+  }
+
+  void _handleAchatIlliflexTap(BuildContext context) async {
+    final success = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AchatIlliflexScreen(
+          myNumber: identifier,
+          token: token,
+        ),
+      ),
+    );
+
+    if (success == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Achat de Pass Illiflex effectué avec succès !"),
+          backgroundColor: const Color(0xFFFF7900),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+  }
+
+  void _handleRapidoTap(BuildContext context) async {
+    final success = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RapidoScreen(
+          myNumber: identifier,
+          token: token,
+        ),
+      ),
+    );
+
+    if (success == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Recharge de carte Rapido effectuée avec succès !"),
+          backgroundColor: const Color(0xFFFF7900),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+  }
+
+  void _handleTransfertTap(BuildContext context) async {
+    final success = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TransfertScreen(
+          myNumber: identifier,
+          token: token,
+        ),
+      ),
+    );
+
+    if (success == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Transfert d'argent effectué avec succès !"),
+          backgroundColor: const Color(0xFFFF7900),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+  }
 }
 
 class MaxItSearchDelegate extends SearchDelegate<String> {
@@ -396,6 +495,7 @@ class MaxItSearchDelegate extends SearchDelegate<String> {
     "Achat Illimix",
     "Achat Internet",
     "Rapido",
+    "Transfert",
   ];
 
   @override
