@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:client_ui/services/api_service.dart';
+import 'package:client_ui/services/favorites_service.dart';
 
 class AchatInternetScreen extends StatefulWidget {
   final String myNumber;
@@ -53,13 +54,19 @@ class _AchatInternetScreenState extends State<AchatInternetScreen> {
   void initState() {
     super.initState();
     _recipientController = TextEditingController(text: widget.myNumber);
+    _recipientController.addListener(_onRecipientChanged);
     _loadPasses();
   }
 
   @override
   void dispose() {
+    _recipientController.removeListener(_onRecipientChanged);
     _recipientController.dispose();
     super.dispose();
+  }
+
+  void _onRecipientChanged() {
+    setState(() {});
   }
 
   Future<void> _loadPasses() async {
@@ -79,16 +86,6 @@ class _AchatInternetScreenState extends State<AchatInternetScreen> {
           "volumeDonneeMo": p["volumeDonneeMo"] as int,
         }).toList();
       });
-      
-      // Auto expand the first category that has passes
-      for (var cat in _categories) {
-        final period = cat["period"]!;
-        final hasPasses = _allPasses.any((p) => p["periode"] == period);
-        if (hasPasses) {
-          _expandedCategory = cat["title"];
-          break;
-        }
-      }
     } catch (e) {
       setState(() {
         _errorMessage = e.toString().replaceAll('Exception:', '').trim();
@@ -136,7 +133,16 @@ class _AchatInternetScreenState extends State<AchatInternetScreen> {
 
   void _showConfirmationDialog() {
     const orangeColor = Color(0xFFFF7900);
-    String selectedPaymentSource = "PRINCIPAL"; // PRINCIPAL or CREDIT
+    final double passPrice = _selectedPass!["prix"];
+    final bool isWalletSufficient = (_currentWalletBalance ?? 0.0) >= passPrice;
+    final bool isCreditSufficient = _creditBalance >= passPrice;
+
+    String selectedPaymentSource = "PRINCIPAL";
+    if (!isWalletSufficient && isCreditSufficient) {
+      selectedPaymentSource = "CREDIT";
+    }
+
+    final bool canConfirm = isWalletSufficient || isCreditSufficient;
 
     showDialog(
       context: context,
@@ -183,17 +189,23 @@ class _AchatInternetScreenState extends State<AchatInternetScreen> {
                   
                   // Principal Wallet Option Card
                   GestureDetector(
-                    onTap: () {
-                      setDialogState(() {
-                        selectedPaymentSource = "PRINCIPAL";
-                      });
-                    },
+                    onTap: !isWalletSufficient
+                        ? null
+                        : () {
+                            setDialogState(() {
+                              selectedPaymentSource = "PRINCIPAL";
+                            });
+                          },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: selectedPaymentSource == "PRINCIPAL" ? orangeColor.withOpacity(0.08) : Colors.transparent,
+                        color: !isWalletSufficient
+                            ? Colors.white.withOpacity(0.02)
+                            : (selectedPaymentSource == "PRINCIPAL" ? orangeColor.withOpacity(0.08) : Colors.transparent),
                         border: Border.all(
-                          color: selectedPaymentSource == "PRINCIPAL" ? orangeColor : Colors.white24,
+                          color: !isWalletSufficient
+                              ? Colors.white12
+                              : (selectedPaymentSource == "PRINCIPAL" ? orangeColor : Colors.white24),
                           width: 1,
                         ),
                         borderRadius: BorderRadius.circular(12),
@@ -202,7 +214,9 @@ class _AchatInternetScreenState extends State<AchatInternetScreen> {
                         children: [
                           Icon(
                             selectedPaymentSource == "PRINCIPAL" ? Icons.radio_button_checked : Icons.radio_button_off,
-                            color: selectedPaymentSource == "PRINCIPAL" ? orangeColor : Colors.white54,
+                            color: !isWalletSufficient
+                                ? Colors.white24
+                                : (selectedPaymentSource == "PRINCIPAL" ? orangeColor : Colors.white54),
                             size: 20,
                           ),
                           const SizedBox(width: 12),
@@ -210,9 +224,27 @@ class _AchatInternetScreenState extends State<AchatInternetScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text("Compte Principal", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "Compte Principal",
+                                      style: TextStyle(
+                                        color: !isWalletSufficient ? Colors.white38 : Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                                 const SizedBox(height: 2),
-                                Text("Solde: ${_currentWalletBalance?.toStringAsFixed(2) ?? '0.00'} F CFA", style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                                Text(
+                                  "Solde: ${_currentWalletBalance?.toStringAsFixed(2) ?? '0.00'} F CFA",
+                                  style: TextStyle(
+                                    color: !isWalletSufficient ? Colors.white24 : Colors.grey,
+                                    fontSize: 11,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -224,17 +256,23 @@ class _AchatInternetScreenState extends State<AchatInternetScreen> {
                   
                   // Phone Credit Option Card
                   GestureDetector(
-                    onTap: () {
-                      setDialogState(() {
-                        selectedPaymentSource = "CREDIT";
-                      });
-                    },
+                    onTap: !isCreditSufficient
+                        ? null
+                        : () {
+                            setDialogState(() {
+                              selectedPaymentSource = "CREDIT";
+                            });
+                          },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: selectedPaymentSource == "CREDIT" ? orangeColor.withOpacity(0.08) : Colors.transparent,
+                        color: !isCreditSufficient
+                            ? Colors.white.withOpacity(0.02)
+                            : (selectedPaymentSource == "CREDIT" ? orangeColor.withOpacity(0.08) : Colors.transparent),
                         border: Border.all(
-                          color: selectedPaymentSource == "CREDIT" ? orangeColor : Colors.white24,
+                          color: !isCreditSufficient
+                              ? Colors.white12
+                              : (selectedPaymentSource == "CREDIT" ? orangeColor : Colors.white24),
                           width: 1,
                         ),
                         borderRadius: BorderRadius.circular(12),
@@ -243,7 +281,9 @@ class _AchatInternetScreenState extends State<AchatInternetScreen> {
                         children: [
                           Icon(
                             selectedPaymentSource == "CREDIT" ? Icons.radio_button_checked : Icons.radio_button_off,
-                            color: selectedPaymentSource == "CREDIT" ? orangeColor : Colors.white54,
+                            color: !isCreditSufficient
+                                ? Colors.white24
+                                : (selectedPaymentSource == "CREDIT" ? orangeColor : Colors.white54),
                             size: 20,
                           ),
                           const SizedBox(width: 12),
@@ -251,9 +291,27 @@ class _AchatInternetScreenState extends State<AchatInternetScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text("Solde Crédit", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "Solde Crédit",
+                                      style: TextStyle(
+                                        color: !isCreditSufficient ? Colors.white38 : Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                                 const SizedBox(height: 2),
-                                Text("Solde: ${_creditBalance.toStringAsFixed(2)} F CFA", style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                                Text(
+                                  "Solde: ${_creditBalance.toStringAsFixed(2)} F CFA",
+                                  style: TextStyle(
+                                    color: !isCreditSufficient ? Colors.white24 : Colors.grey,
+                                    fontSize: 11,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -280,7 +338,7 @@ class _AchatInternetScreenState extends State<AchatInternetScreen> {
                         onPressed: _isSubmitting
                             ? null
                             : () {
-                                Navigator.pop(context); // Close confirmation dialog, preserving outer fields
+                                Navigator.pop(context);
                               },
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Colors.white24),
@@ -296,10 +354,14 @@ class _AchatInternetScreenState extends State<AchatInternetScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: _isSubmitting ? null : () => _confirmPurchase(setDialogState, selectedPaymentSource),
+                        onPressed: (_isSubmitting || !canConfirm)
+                            ? null
+                            : () => _confirmPurchase(setDialogState, selectedPaymentSource),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: orangeColor,
                           foregroundColor: Colors.white,
+                          disabledBackgroundColor: orangeColor.withOpacity(0.3),
+                          disabledForegroundColor: Colors.white24,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
@@ -589,6 +651,25 @@ class _AchatInternetScreenState extends State<AchatInternetScreen> {
                                 },
                               ),
                             ),
+                            if (_recipientController.text.trim().isNotEmpty && _recipientController.text.trim() != widget.myNumber) ...[
+                              IconButton(
+                                icon: Icon(
+                                  FavoritesService.isFavorite(_recipientController.text.trim()) ? Icons.favorite : Icons.favorite_border,
+                                  color: FavoritesService.isFavorite(_recipientController.text.trim()) ? orangeColor : Colors.white30,
+                                  size: 18,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    final numStr = _recipientController.text.trim();
+                                    if (FavoritesService.isFavorite(numStr)) {
+                                      FavoritesService.removeFavorite(numStr);
+                                    } else {
+                                      FavoritesService.addFavorite(numStr);
+                                    }
+                                  });
+                                },
+                              ),
+                            ],
                             IconButton(
                               icon: const Icon(Icons.close, color: Colors.white30, size: 18),
                               onPressed: () {
@@ -599,6 +680,48 @@ class _AchatInternetScreenState extends State<AchatInternetScreen> {
                         ),
                       ),
                     ),
+                    if (FavoritesService.favoriteNumbers.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: SizedBox(
+                          height: 38,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: FavoritesService.favoriteNumbers.length,
+                            itemBuilder: (context, index) {
+                              final numStr = FavoritesService.favoriteNumbers[index];
+                              final isSelected = _recipientController.text.trim() == numStr;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: ActionChip(
+                                  backgroundColor: const Color(0xFF1E1E1E),
+                                  side: BorderSide(
+                                    color: isSelected ? orangeColor : Colors.white12,
+                                    width: 0.8,
+                                  ),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  label: Row(
+                                    children: [
+                                      const Icon(Icons.favorite, color: orangeColor, size: 14),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        numStr,
+                                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _recipientController.text = numStr;
+                                    });
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
 
                     if (_errorMessage != null)
                       Padding(
