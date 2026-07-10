@@ -45,7 +45,7 @@ class ApiService {
     try {
       if (Platform.isAndroid) {
         _cachedBaseUrl = 'http://10.96.18.178:8765';
-        //u_cachedBaseUrl = 'http://192.168.1.12:8765';
+        //_cachedBaseUrl = 'http://192.168.1.12:8765';
         return _cachedBaseUrl!;
       }
     } catch (_) {}
@@ -289,6 +289,256 @@ class ApiService {
     } catch (e) {
       if (e is Exception) rethrow;
       throw Exception('Erreur lors de la validation de la transaction : $e');
+    }
+  }
+
+  /// Récupère tous les pass illimix.
+  static Future<List<dynamic>> getPassIllimix(String token) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/pricing/pass-illimix');
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['data'] as List<dynamic>; // ApiResponse wraps list in 'data' field
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Impossible de récupérer les pass Illimix (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de la récupération des pass Illimix : $e');
+    }
+  }
+
+  /// Récupère la liste des pass Illiflex disponibles.
+  static Future<List<dynamic>> getPassIlliflex(String token) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/pricing/pass-illiflex');
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['data'] as List<dynamic>;
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Impossible de récupérer les pass Illiflex (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de la récupération des pass Illiflex : $e');
+    }
+  }
+
+  /// Achète un pass illiflex.
+  static Future<Map<String, dynamic>> purchasePassIlliflex({
+    required String receiverNumber,
+    required int passId,
+    required String passName,
+    required double amount,
+    required String paymentMethod, // "WALLET" or "CREDIT"
+    required String token,
+  }) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/pricing/purchase/pass-illiflex');
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'receiverNumber': receiverNumber,
+          'passId': passId,
+          'passName': passName,
+          'amount': amount,
+          'paymentMethod': paymentMethod,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Échec de l\'achat (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de la validation de la transaction : $e');
+    }
+  }
+
+  /// Achète un pass illimix.
+  static Future<Map<String, dynamic>> purchasePassIllimix({
+    required String receiverNumber,
+    required int passId,
+    required String passName,
+    required double amount,
+    required String paymentMethod, // "WALLET" or "CREDIT"
+    required String token,
+  }) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/pricing/purchase/pass-illimix');
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'receiverNumber': receiverNumber,
+          'passId': passId,
+          'passName': passName,
+          'amount': amount,
+          'paymentMethod': paymentMethod,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Échec de l\'achat (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de la validation de la transaction : $e');
+    }
+  }
+
+  /// Récupère les détails d'une carte Rapido par son numéro.
+  static Future<Map<String, dynamic>> getRapidoCard(String cardNumber, String token) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/pricing/rapido/card/$cardNumber');
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 404) {
+        throw Exception("La carte Rapido n'existe pas dans le système.");
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Impossible de récupérer la carte Rapido (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de la récupération de la carte Rapido : $e');
+    }
+  }
+
+  /// Enregistre/Crée une nouvelle carte Rapido.
+  static Future<Map<String, dynamic>> registerRapidoCard({
+    required String cardNumber,
+    required double initialBalance,
+    required String token,
+  }) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/pricing/rapido/register');
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'numeroCarte': cardNumber,
+          'soldeInitial': initialBalance,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Échec de l\'enregistrement (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de l\'enregistrement de la carte Rapido : $e');
+    }
+  }
+
+  /// Recharge une carte Rapido via le compte principal.
+  static Future<Map<String, dynamic>> purchaseRapido({
+    required String cardNumber,
+    required double amount,
+    required String token,
+  }) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/pricing/purchase/rapido');
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'receiverNumber': cardNumber,
+          'amount': amount,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Échec de la recharge (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de la recharge Rapido : $e');
+    }
+  }
+
+  /// Effectue un transfert d'argent (Wallet à Wallet).
+  static Future<Map<String, dynamic>> transfer({
+    required String sender,
+    required String receiver,
+    required double amount,
+    required String token,
+  }) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/transactions/transfer');
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'sender': sender,
+          'receiver': receiver,
+          'amount': amount,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Échec du transfert (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors du transfert : $e');
     }
   }
 
