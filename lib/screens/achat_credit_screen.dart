@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:client_ui/services/api_service.dart';
+import 'package:client_ui/services/favorites_service.dart';
 
 class AchatCreditScreen extends StatefulWidget {
   final String myNumber;
@@ -32,15 +33,21 @@ class _AchatCreditScreenState extends State<AchatCreditScreen> {
   void initState() {
     super.initState();
     _recipientController = TextEditingController(text: widget.myNumber);
+    _recipientController.addListener(_onRecipientChanged);
     _amountController.addListener(_onAmountChanged);
   }
 
   @override
   void dispose() {
+    _recipientController.removeListener(_onRecipientChanged);
     _recipientController.dispose();
     _amountController.removeListener(_onAmountChanged);
     _amountController.dispose();
     super.dispose();
+  }
+
+  void _onRecipientChanged() {
+    setState(() {});
   }
 
   void _onAmountChanged() {
@@ -75,6 +82,9 @@ class _AchatCreditScreenState extends State<AchatCreditScreen> {
 
   void _showConfirmationDialog() {
     const orangeColor = Color(0xFFFF7900);
+    final double purchaseAmount = double.tryParse(_amountController.text) ?? 0.0;
+    final bool isWalletSufficient = (_currentBalance ?? 0.0) >= purchaseAmount;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -99,7 +109,7 @@ class _AchatCreditScreenState extends State<AchatCreditScreen> {
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
                     "Détails de la transaction :",
@@ -107,9 +117,73 @@ class _AchatCreditScreenState extends State<AchatCreditScreen> {
                   ),
                   const SizedBox(height: 12),
                   _buildInfoRow("Destinataire", _recipientController.text),
-                  _buildInfoRow("Montant acheté", "${_amountController.text} F CFA"),
+                  _buildInfoRow("Montant acheté", "${purchaseAmount.toStringAsFixed(0)} F CFA"),
                   const Divider(color: Colors.white12, height: 24),
-                  _buildInfoRow("Solde principal actuel", "${_currentBalance?.toStringAsFixed(2) ?? '0.00'} F CFA"),
+
+                  const Text(
+                    "Mode de paiement :",
+                    style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Principal Wallet Option Card
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: !isWalletSufficient
+                          ? Colors.white.withOpacity(0.02)
+                          : orangeColor.withOpacity(0.08),
+                      border: Border.all(
+                        color: !isWalletSufficient ? Colors.white12 : orangeColor,
+                        width: 1.2,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.radio_button_checked,
+                          color: !isWalletSufficient ? Colors.white24 : orangeColor,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    "Compte Principal",
+                                    style: TextStyle(
+                                      color: !isWalletSufficient ? Colors.white38 : Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  if (!isWalletSufficient)
+                                    const Text(
+                                      "Solde insuffisant",
+                                      style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                "Solde: ${_currentBalance?.toStringAsFixed(2) ?? '0.00'} F CFA",
+                                style: TextStyle(
+                                  color: !isWalletSufficient ? Colors.white24 : Colors.grey,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   if (_errorMessage != null) ...[
                     const SizedBox(height: 16),
                     Text(
@@ -144,10 +218,14 @@ class _AchatCreditScreenState extends State<AchatCreditScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: _isSubmitting ? null : () => _confirmPurchase(setDialogState),
+                        onPressed: (_isSubmitting || !isWalletSufficient)
+                            ? null
+                            : () => _confirmPurchase(setDialogState),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: orangeColor,
                           foregroundColor: Colors.white,
+                          disabledBackgroundColor: orangeColor.withOpacity(0.3),
+                          disabledForegroundColor: Colors.white24,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
@@ -290,6 +368,25 @@ class _AchatCreditScreenState extends State<AchatCreditScreen> {
                           },
                         ),
                       ),
+                      if (_recipientController.text.trim().isNotEmpty && _recipientController.text.trim() != widget.myNumber) ...[
+                        IconButton(
+                          icon: Icon(
+                            FavoritesService.isFavorite(_recipientController.text.trim()) ? Icons.favorite : Icons.favorite_border,
+                            color: FavoritesService.isFavorite(_recipientController.text.trim()) ? orangeColor : Colors.white30,
+                            size: 18,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              final numStr = _recipientController.text.trim();
+                              if (FavoritesService.isFavorite(numStr)) {
+                                FavoritesService.removeFavorite(numStr);
+                              } else {
+                                FavoritesService.addFavorite(numStr);
+                              }
+                            });
+                          },
+                        ),
+                      ],
                       IconButton(
                         icon: const Icon(Icons.close, color: Colors.white30, size: 18),
                         onPressed: () {
@@ -299,6 +396,46 @@ class _AchatCreditScreenState extends State<AchatCreditScreen> {
                     ],
                   ),
                 ),
+                if (FavoritesService.favoriteNumbers.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 38,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: FavoritesService.favoriteNumbers.length,
+                      itemBuilder: (context, index) {
+                        final numStr = FavoritesService.favoriteNumbers[index];
+                        final isSelected = _recipientController.text.trim() == numStr;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: ActionChip(
+                            backgroundColor: const Color(0xFF1E1E1E),
+                            side: BorderSide(
+                              color: isSelected ? orangeColor : Colors.white12,
+                              width: 0.8,
+                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            label: Row(
+                              children: [
+                                const Icon(Icons.favorite, color: orangeColor, size: 14),
+                                const SizedBox(width: 6),
+                                Text(
+                                  numStr,
+                                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _recipientController.text = numStr;
+                              });
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
 
                 // 2. Amount capsule input
