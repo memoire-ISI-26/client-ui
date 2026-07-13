@@ -44,7 +44,7 @@ class ApiService {
     // 4. Repli par défaut selon la plateforme (ex: émulateur Android)
     try {
       if (Platform.isAndroid) {
-        _cachedBaseUrl = 'http://10.96.18.178:8765';
+        _cachedBaseUrl = 'http://10.96.18.190:8765';
         //_cachedBaseUrl = 'http://192.168.1.12:8765';
         return _cachedBaseUrl!;
       }
@@ -539,6 +539,94 @@ class ApiService {
     } catch (e) {
       if (e is Exception) rethrow;
       throw Exception('Erreur lors du transfert : $e');
+    }
+  }
+
+  /// Effectue un dépôt d'argent sur le compte principal (Wallet).
+  static Future<Map<String, dynamic>> deposit({
+    required String number,
+    required double amount,
+    required String token,
+  }) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/transactions/deposit');
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'number': number,
+          'amount': amount,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Échec du dépôt (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors du dépôt : $e');
+    }
+  }
+
+  /// Effectue un retrait d'argent depuis le compte principal (Wallet).
+  static Future<Map<String, dynamic>> withdraw({
+    required String number,
+    required double amount,
+    required String token,
+  }) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/transactions/withdraw');
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'number': number,
+          'amount': amount,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Échec du retrait (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors du retrait : $e');
+    }
+  }
+
+  /// Récupère l'historique des transactions pour un numéro donné.
+  static Future<List<dynamic>> getTransactionHistory(String number, String token) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/transactions/history/$number');
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Impossible de récupérer l\'historique (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de la récupération de l\'historique des transactions : $e');
     }
   }
 
