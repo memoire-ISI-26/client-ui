@@ -32,10 +32,20 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic>? _lastTransaction;
   String? _txnError;
 
+  late PageController _pageController;
+  int _activeUniverseIndex = 0; // 0 = TELCO, 1 = OMY
+
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _activeUniverseIndex);
     _fetchLastTransaction();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchLastTransaction() async {
@@ -110,48 +120,327 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Card(
-                color: darkCardColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: Colors.grey[800]!, width: 0.5),
+        child: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 24.0, right: 24.0, top: 16.0),
+                  child: Card(
+                    color: darkCardColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: Colors.grey[800]!, width: 0.5),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        children: [
+                          CircleAvatar(
+                            radius: 40,
+                            backgroundColor: orangeColor.withOpacity(0.1),
+                            child: const Icon(Icons.person_rounded, size: 48, color: orangeColor),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            "Bienvenue dans Max It",
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Numéro : ${widget.identifier}",
+                            style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
+                const SizedBox(height: 12),
+
+                // PageView
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    onPageChanged: (index) {
+                      setState(() {
+                        _activeUniverseIndex = index;
+                      });
+                    },
                     children: [
-                      CircleAvatar(
-                        radius: 40,
-                        backgroundColor: orangeColor.withOpacity(0.1),
-                        child: const Icon(Icons.person_rounded, size: 48, color: orangeColor),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        "Bienvenue dans Max It",
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Numéro : ${widget.identifier}",
-                        style: TextStyle(fontSize: 14, color: Colors.grey[400]),
-                      ),
+                      _buildTelcoUniversePage(context, orangeColor, darkCardColor),
+                      _buildOmyUniversePage(context, orangeColor, darkCardColor),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
+              ],
+            ),
 
+            // Floating bottom universe selector
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _buildFloatingUniverseSelector(orangeColor, darkCardColor),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingUniverseSelector(Color orangeColor, Color darkCardColor) {
+    return Container(
+      height: 90,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFF121212).withOpacity(0.0),
+            const Color(0xFF121212).withOpacity(0.8),
+            const Color(0xFF121212),
+          ],
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Container(
+        width: 120,
+        height: 48,
+        decoration: BoxDecoration(
+          color: darkCardColor.withOpacity(0.85),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white12, width: 0.8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.4),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  _pageController.animateToPage(
+                    0,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _activeUniverseIndex == 0 ? orangeColor : Colors.transparent,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.phone_android_rounded,
+                    color: _activeUniverseIndex == 0 ? Colors.white : Colors.grey[500],
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  _pageController.animateToPage(
+                    1,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _activeUniverseIndex == 1 ? orangeColor : Colors.transparent,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.wallet_rounded,
+                    color: _activeUniverseIndex == 1 ? Colors.white : Colors.grey[500],
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTelcoUniversePage(BuildContext context, Color orangeColor, Color darkCardColor) {
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(left: 24.0, right: 24.0, top: 12.0, bottom: 90.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            "NOS SERVICES",
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 1.3,
+            children: [
+              _buildServiceItem(
+                context,
+                "Achat Crédit",
+                Icons.phone_android_rounded,
+                orangeColor,
+                darkCardColor,
+                () => _handleAchatCreditTap(context),
+              ),
+              _buildServiceItem(
+                context,
+                "Achat Illiflex",
+                Icons.swap_calls_rounded,
+                orangeColor,
+                darkCardColor,
+                () => _handleAchatIlliflexTap(context),
+              ),
+              _buildServiceItem(
+                context,
+                "Achat Illimix",
+                Icons.all_inclusive_rounded,
+                orangeColor,
+                darkCardColor,
+                () => _handleAchatIllimixTap(context),
+              ),
+              _buildServiceItem(
+                context,
+                "Achat Internet",
+                Icons.language_rounded,
+                orangeColor,
+                darkCardColor,
+                () => _handleAchatInternetTap(context),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOmyUniversePage(BuildContext context, Color orangeColor, Color darkCardColor) {
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(left: 24.0, right: 24.0, top: 12.0, bottom: 90.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            "NOS SERVICES",
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 1.3,
+            children: [
+              _buildServiceItem(
+                context,
+                "Achat Crédit",
+                Icons.phone_android_rounded,
+                orangeColor,
+                darkCardColor,
+                () => _handleAchatCreditTap(context),
+              ),
+              _buildServiceItem(
+                context,
+                "Achat Illiflex",
+                Icons.swap_calls_rounded,
+                orangeColor,
+                darkCardColor,
+                () => _handleAchatIlliflexTap(context),
+              ),
+              _buildServiceItem(
+                context,
+                "Achat Illimix",
+                Icons.all_inclusive_rounded,
+                orangeColor,
+                darkCardColor,
+                () => _handleAchatIllimixTap(context),
+              ),
+              _buildServiceItem(
+                context,
+                "Achat Internet",
+                Icons.language_rounded,
+                orangeColor,
+                darkCardColor,
+                () => _handleAchatInternetTap(context),
+              ),
+              _buildServiceItem(
+                context,
+                "Rapido",
+                Icons.directions_car_rounded,
+                orangeColor,
+                darkCardColor,
+                () => _handleRapidoTap(context),
+              ),
+              _buildServiceItem(
+                context,
+                "Transfert",
+                Icons.swap_horiz_rounded,
+                orangeColor,
+                darkCardColor,
+                () => _handleTransfertTap(context),
+              ),
+              _buildServiceItem(
+                context,
+                "Dépôt",
+                Icons.add_circle_outline_rounded,
+                orangeColor,
+                darkCardColor,
+                () => _handleDepositTap(context),
+              ),
+              _buildServiceItem(
+                context,
+                "Retrait",
+                Icons.remove_circle_outline_rounded,
+                orangeColor,
+                darkCardColor,
+                () => _handleWithdrawalTap(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Title of last transaction with navigation link
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
               const Text(
-                "NOS SERVICES",
+                "DERNIÈRE TRANSACTION",
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -159,251 +448,159 @@ class _HomeScreenState extends State<HomeScreen> {
                   letterSpacing: 1.5,
                 ),
               ),
-              const SizedBox(height: 12),
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.3,
-                children: [
-                  _buildServiceItem(
-                    context,
-                    "Achat Crédit",
-                    Icons.phone_android_rounded,
-                    orangeColor,
-                    darkCardColor,
-                    () => _handleAchatCreditTap(context),
-                  ),
-                  _buildServiceItem(
-                    context,
-                    "Achat Illiflex",
-                    Icons.swap_calls_rounded,
-                    orangeColor,
-                    darkCardColor,
-                    () => _handleAchatIlliflexTap(context),
-                  ),
-                  _buildServiceItem(
-                    context,
-                    "Achat Illimix",
-                    Icons.all_inclusive_rounded,
-                    orangeColor,
-                    darkCardColor,
-                    () => _handleAchatIllimixTap(context),
-                  ),
-                  _buildServiceItem(
-                    context,
-                    "Achat Internet",
-                    Icons.language_rounded,
-                    orangeColor,
-                    darkCardColor,
-                    () => _handleAchatInternetTap(context),
-                  ),
-                  _buildServiceItem(
-                    context,
-                    "Rapido",
-                    Icons.directions_car_rounded,
-                    orangeColor,
-                    darkCardColor,
-                    () => _handleRapidoTap(context),
-                  ),
-                  _buildServiceItem(
-                    context,
-                    "Transfert",
-                    Icons.swap_horiz_rounded,
-                    orangeColor,
-                    darkCardColor,
-                    () => _handleTransfertTap(context),
-                  ),
-                  _buildServiceItem(
-                    context,
-                    "Dépôt",
-                    Icons.add_circle_outline_rounded,
-                    orangeColor,
-                    darkCardColor,
-                    () => _handleDepositTap(context),
-                  ),
-                  _buildServiceItem(
-                    context,
-                    "Retrait",
-                    Icons.remove_circle_outline_rounded,
-                    orangeColor,
-                    darkCardColor,
-                    () => _handleWithdrawalTap(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Title of last transaction with navigation link
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    "DERNIÈRE TRANSACTION",
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => _navigateToHistory(context),
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(50, 30),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Row(
-                      children: [
-                        Text(
-                          "Voir l'historique",
-                          style: TextStyle(color: orangeColor, fontSize: 13, fontWeight: FontWeight.bold),
-                        ),
-                        SizedBox(width: 4),
-                        Icon(Icons.arrow_forward_ios_rounded, color: orangeColor, size: 12),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Display last transaction info
-              if (_isLoadingLastTxn) ...[
-                const Center(child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: CircularProgressIndicator(color: orangeColor),
-                )),
-              ] else if (_txnError != null) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Text(
-                    _txnError!,
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 13),
-                    textAlign: TextAlign.center,
-                  ),
+              TextButton(
+                onPressed: () => _navigateToHistory(context),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(50, 30),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-              ] else if (_lastTransaction == null) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: darkCardColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white12, width: 0.8),
-                  ),
-                  child: const Text(
-                    "Aucune transaction récente.",
-                    style: TextStyle(color: Colors.white30, fontSize: 13),
-                  ),
+                child: Row(
+                  children: [
+                    Text(
+                      "Voir l'historique",
+                      style: TextStyle(color: orangeColor, fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_ios_rounded, color: orangeColor, size: 12),
+                  ],
                 ),
-              ] else ...[
-                () {
-                  final String type = _lastTransaction!["type"] as String? ?? "";
-                  final String sender = _lastTransaction!["sender"] as String? ?? "";
-                  final String receiver = _lastTransaction!["receiver"] as String? ?? "";
-                  final double amount = (_lastTransaction!["amount"] as num?)?.toDouble() ?? 0.0;
-
-                  final bool isIncomingTransfer = type == "TRANSFERT" && receiver == widget.identifier;
-
-                  IconData icon = Icons.payment_rounded;
-                  String label = "Transaction";
-                  Color color = orangeColor;
-                  if (type == "DEPOT" || isIncomingTransfer) {
-                    icon = type == "DEPOT" ? Icons.add_circle_outline_rounded : Icons.swap_horiz_rounded;
-                    label = type == "DEPOT" ? "Dépôt Reçu" : "Transfert Reçu";
-                    color = Colors.greenAccent;
-                  } else if (type == "RETRAIT") {
-                    icon = Icons.remove_circle_outline_rounded;
-                    label = "Retrait";
-                    color = Colors.redAccent;
-                  } else if (type == "TRANSFERT") {
-                    icon = Icons.swap_horiz_rounded;
-                    label = "Transfert d'argent";
-                  } else if (type == "ACHAT_CREDIT") {
-                    icon = Icons.phone_android_rounded;
-                    label = "Achat Crédit";
-                  } else if (type == "ACHAT_INTERNET") {
-                    icon = Icons.language_rounded;
-                    label = "Pass Internet";
-                  } else if (type == "ACHAT_ILLIMIX") {
-                    icon = Icons.all_inclusive_rounded;
-                    label = "Pass Illimix";
-                  } else if (type == "ACHAT_ILLIFLEX") {
-                    icon = Icons.swap_calls_rounded;
-                    label = "Pass Illiflex";
-                  } else if (type == "PAIEMENT_RAPIDO") {
-                    icon = Icons.directions_car_rounded;
-                    label = "Recharge Rapido";
-                  }
-
-                  final String directionLabel = (type == "DEPOT")
-                      ? "Depuis : Admin / Dépôt"
-                      : (type == "RETRAIT")
-                          ? "Depuis : Distributeur"
-                          : (receiver == widget.identifier)
-                              ? "Reçu de : $sender"
-                              : "Destinataire : $receiver";
-
-                  final String prefixSymbol = (type == "DEPOT" || isIncomingTransfer) ? "+" : "-";
-
-                  return Container(
-                    padding: const EdgeInsets.all(16.0),
-                    decoration: BoxDecoration(
-                      color: darkCardColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white12, width: 0.8),
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: color.withOpacity(0.08),
-                          radius: 22,
-                          child: Icon(icon, color: color, size: 20),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                label,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                directionLabel,
-                                style: TextStyle(
-                                  color: Colors.grey[400],
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          "$prefixSymbol ${amount.toStringAsFixed(0)} F",
-                          style: TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }(),
-              ],
+              ),
             ],
           ),
-        ),
+          const SizedBox(height: 12),
+
+          // Display last transaction info
+          if (_isLoadingLastTxn) ...[
+            Center(child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: CircularProgressIndicator(color: orangeColor),
+            )),
+          ] else if (_txnError != null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(
+                _txnError!,
+                style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ] else if (_lastTransaction == null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: darkCardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white12, width: 0.8),
+              ),
+              child: const Text(
+                "Aucune transaction récente.",
+                style: TextStyle(color: Colors.white30, fontSize: 13),
+              ),
+            ),
+          ] else ...[
+            () {
+              final String type = _lastTransaction!["type"] as String? ?? "";
+              final String sender = _lastTransaction!["sender"] as String? ?? "";
+              final String receiver = _lastTransaction!["receiver"] as String? ?? "";
+              final double amount = (_lastTransaction!["amount"] as num?)?.toDouble() ?? 0.0;
+
+              final bool isIncomingTransfer = type == "TRANSFERT" && receiver == widget.identifier;
+
+              IconData icon = Icons.payment_rounded;
+              String label = "Transaction";
+              Color color = orangeColor;
+              if (type == "DEPOT" || isIncomingTransfer) {
+                icon = type == "DEPOT" ? Icons.add_circle_outline_rounded : Icons.swap_horiz_rounded;
+                label = type == "DEPOT" ? "Dépôt Reçu" : "Transfert Reçu";
+                color = Colors.greenAccent;
+              } else if (type == "RETRAIT") {
+                icon = Icons.remove_circle_outline_rounded;
+                label = "Retrait";
+                color = Colors.redAccent;
+              } else if (type == "TRANSFERT") {
+                icon = Icons.swap_horiz_rounded;
+                label = "Transfert d'argent";
+              } else if (type == "ACHAT_CREDIT") {
+                icon = Icons.phone_android_rounded;
+                label = "Achat Crédit";
+              } else if (type == "ACHAT_INTERNET") {
+                icon = Icons.language_rounded;
+                label = "Pass Internet";
+              } else if (type == "ACHAT_ILLIMIX") {
+                icon = Icons.all_inclusive_rounded;
+                label = "Pass Illimix";
+              } else if (type == "ACHAT_ILLIFLEX") {
+                icon = Icons.swap_calls_rounded;
+                label = "Pass Illiflex";
+              } else if (type == "PAIEMENT_RAPIDO") {
+                icon = Icons.directions_car_rounded;
+                label = "Recharge Rapido";
+              }
+
+              final String directionLabel = (type == "DEPOT")
+                  ? "Depuis : Admin / Dépôt"
+                  : (type == "RETRAIT")
+                      ? "Depuis : Distributeur"
+                      : (receiver == widget.identifier)
+                          ? "Reçu de : $sender"
+                          : "Destinataire : $receiver";
+
+              final String prefixSymbol = (type == "DEPOT" || isIncomingTransfer) ? "+" : "-";
+
+              return Container(
+                padding: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: darkCardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white12, width: 0.8),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: color.withOpacity(0.08),
+                      radius: 22,
+                      child: Icon(icon, color: color, size: 20),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            directionLabel,
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      "$prefixSymbol ${amount.toStringAsFixed(0)} F",
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }(),
+          ],
+        ],
       ),
     );
   }
