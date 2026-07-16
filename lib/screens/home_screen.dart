@@ -35,17 +35,100 @@ class _HomeScreenState extends State<HomeScreen> {
   late PageController _pageController;
   int _activeUniverseIndex = 0; // 0 = TELCO, 1 = OMY
 
+  bool _isBalanceVisible = false;
+  bool _isSimpleMode = true;
+  double? _currentWalletBalance;
+  double _creditBalance = 0.0;
+
+  double _simulatedDataGb = 0;
+  int _simulatedCallMinutes = 0;
+  int _simulatedSms = 0;
+
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _activeUniverseIndex);
     _fetchLastTransaction();
+    _fetchAccountDetails();
   }
 
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchAccountDetails() async {
+    try {
+      final accountData = await ApiService.getAccount(widget.identifier, widget.token);
+      final txns = await ApiService.getTransactionHistory(widget.identifier, widget.token);
+
+      final catalogs = await Future.wait([
+        ApiService.getPassInternet(widget.token).catchError((_) => []),
+        ApiService.getPassIllimix(widget.token).catchError((_) => []),
+        ApiService.getPassIlliflex(widget.token).catchError((_) => []),
+      ]);
+
+      final internetList = catalogs[0];
+      final illimixList = catalogs[1];
+      final illiflexList = catalogs[2];
+
+      double aggregatedDataMo = 0.0;
+      int aggregatedMinutes = 0;
+      int aggregatedSms = 0;
+
+      final receivedTxns = txns.where((t) => t["receiver"] == widget.identifier).toList();
+
+      for (final txn in receivedTxns) {
+        final double amount = (txn["amount"] as num?)?.toDouble() ?? 0.0;
+        final String type = txn["type"] as String? ?? "";
+
+        if (type == "ACHAT_INTERNET") {
+          final pass = internetList.firstWhere(
+            (p) => (p["prix"] as num?)?.toDouble() == amount,
+            orElse: () => null,
+          );
+          if (pass != null) {
+            aggregatedDataMo += pass["volumeDonneeMo"] as int? ?? 0;
+          }
+        } else if (type == "ACHAT_ILLIMIX") {
+          final pass = illimixList.firstWhere(
+            (p) => (p["prix"] as num?)?.toDouble() == amount,
+            orElse: () => null,
+          );
+          if (pass != null) {
+            aggregatedDataMo += pass["volumeDonneeMo"] as int? ?? 0;
+            aggregatedMinutes += pass["minutesAppels"] as int? ?? 0;
+            aggregatedSms += pass["nbMessages"] as int? ?? 0;
+          }
+        } else if (type == "ACHAT_ILLIFLEX") {
+          final pass = illiflexList.firstWhere(
+            (p) => (p["prix"] as num?)?.toDouble() == amount,
+            orElse: () => null,
+          );
+          if (pass != null) {
+            final paliersList = pass["paliers"] as List<dynamic>? ?? [];
+            if (paliersList.isNotEmpty) {
+              final pal = paliersList.first;
+              aggregatedDataMo += pal["volumeDonneeMo"] as int? ?? 0;
+              aggregatedMinutes += pal["minutesAppels"] as int? ?? 0;
+            }
+            aggregatedSms += pass["nbMessagesFixe"] as int? ?? 0;
+          }
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _currentWalletBalance = (accountData["balance"] as num?)?.toDouble() ?? 0.0;
+        _creditBalance = (accountData["callCredit"] as num?)?.toDouble() ?? 0.0;
+        _simulatedDataGb = aggregatedDataMo / 1000.0;
+        _simulatedCallMinutes = aggregatedMinutes;
+        _simulatedSms = aggregatedSms;
+      });
+    } catch (_) {
+      // Ignore
+    }
   }
 
   Future<void> _fetchLastTransaction() async {
@@ -94,101 +177,165 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: darkBgColor,
-      appBar: AppBar(
-        backgroundColor: darkBgColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.settings_rounded, color: Colors.white),
-          tooltip: "Paramètres",
-          onPressed: () => _showSettingsBottomSheet(context, darkCardColor, orangeColor),
-        ),
-        title: const Text(
-          "Tableau de Bord Client",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search_rounded, color: Colors.white),
-            tooltip: "Recherche",
-            onPressed: () {
-              showSearch(
-                context: context,
-                delegate: MaxItSearchDelegate(),
-              );
-            },
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF8C3200), // Premium dark orange gradient
+              Color(0xFF121212),
+              Color(0xFF121212),
+            ],
+            stops: [0.0, 0.45, 1.0],
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(left: 24.0, right: 24.0, top: 16.0),
-                  child: Card(
-                    color: darkCardColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(color: Colors.grey[800]!, width: 0.5),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        children: [
-                          CircleAvatar(
-                            radius: 40,
-                            backgroundColor: orangeColor.withOpacity(0.1),
-                            child: const Icon(Icons.person_rounded, size: 48, color: orangeColor),
+        ),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Top Custom Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Left: Settings gear button
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.12),
+                            shape: BoxShape.circle,
                           ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            "Bienvenue dans Max It",
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                          child: IconButton(
+                            icon: const Icon(Icons.settings_rounded, color: Colors.white),
+                            onPressed: () => _showSettingsBottomSheet(context, darkCardColor, orangeColor),
+                          ),
+                        ),
+
+                        // Center: Slider Switch (Simple / Avancé)
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _isSimpleMode = !_isSimpleMode;
+                            });
+                          },
+                          child: Container(
+                            height: 38,
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(19),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (_isSimpleMode) ...[
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF222222),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.double_arrow_rounded, color: Colors.white, size: 14),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Padding(
+                                    padding: EdgeInsets.only(right: 12.0),
+                                    child: Text(
+                                      "Simple",
+                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                  ),
+                                ] else ...[
+                                  const Padding(
+                                    padding: EdgeInsets.only(left: 12.0),
+                                    child: Text(
+                                      "Avancé",
+                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF222222),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.keyboard_double_arrow_left_rounded, color: Colors.white, size: 14),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Numéro : ${widget.identifier}",
-                            style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                        ),
+
+                        // Right: Search Button
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.12),
+                            shape: BoxShape.circle,
                           ),
-                        ],
-                      ),
+                          child: IconButton(
+                            icon: const Icon(Icons.search_rounded, color: Colors.white),
+                            onPressed: () {
+                              showSearch(
+                                context: context,
+                                delegate: MaxItSearchDelegate(),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
 
-                // PageView
-                Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    onPageChanged: (index) {
-                      setState(() {
-                        _activeUniverseIndex = index;
-                      });
-                    },
+                  // Phone number dropdown row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildTelcoUniversePage(context, orangeColor, darkCardColor),
-                      _buildOmyUniversePage(context, orangeColor, darkCardColor),
+                      Text(
+                        _getObfuscatedPhone(widget.identifier),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
                     ],
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(height: 16),
 
-            // Floating bottom universe selector
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _buildFloatingUniverseSelector(orangeColor, darkCardColor),
-            ),
-          ],
+                  // PageView
+                  Expanded(
+                    child: PageView(
+                      controller: _pageController,
+                      onPageChanged: (index) {
+                        setState(() {
+                          _activeUniverseIndex = index;
+                        });
+                      },
+                      children: [
+                        _buildTelcoUniversePage(context, orangeColor, darkCardColor),
+                        _buildOmyUniversePage(context, orangeColor, darkCardColor),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _buildFloatingUniverseSelector(orangeColor, darkCardColor),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -285,6 +432,78 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // TELCO Top Card: Credit and Internet Data
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.08),
+                  Colors.white.withOpacity(0.03),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white12, width: 0.8),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.phone_android_rounded, color: orangeColor, size: 16),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Crédit d'appel",
+                            style: TextStyle(color: Colors.grey[400], fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "${_creditBalance.toStringAsFixed(0)} F CFA",
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 0.8,
+                  height: 40,
+                  color: Colors.white24,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.language_rounded, color: orangeColor, size: 16),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Internet",
+                            style: TextStyle(color: Colors.grey[400], fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "${_simulatedDataGb.toStringAsFixed(1)} Go",
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
           const Text(
             "NOS SERVICES",
             style: TextStyle(
@@ -337,6 +556,71 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 24),
+
+          // TELCO Bottom Card: Call Minutes and SMS
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: darkCardColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white12, width: 0.8),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.access_time_rounded, color: orangeColor, size: 16),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Minutes d'appels",
+                            style: TextStyle(color: Colors.grey[400], fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "$_simulatedCallMinutes minutes",
+                        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 0.8,
+                  height: 40,
+                  color: Colors.white24,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.mail_outline_rounded, color: orangeColor, size: 16),
+                          const SizedBox(width: 8),
+                          Text(
+                            "SMS",
+                            style: TextStyle(color: Colors.grey[400], fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "$_simulatedSms SMS",
+                        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -349,6 +633,70 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // OMY Balance Card with mock QR code
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.08),
+                  Colors.white.withOpacity(0.03),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white12, width: 0.8),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              _isBalanceVisible ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isBalanceVisible = !_isBalanceVisible;
+                              });
+                            },
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _isBalanceVisible
+                                  ? "${_currentWalletBalance?.toStringAsFixed(0) ?? '0'} F"
+                                  : "****** F",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                _buildMockQrCode(),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
           const Text(
             "NOS SERVICES",
             style: TextStyle(
@@ -433,172 +781,176 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
 
-          // Title of last transaction with navigation link
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                "DERNIÈRE TRANSACTION",
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              TextButton(
-                onPressed: () => _navigateToHistory(context),
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(50, 30),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      "Voir l'historique",
-                      style: TextStyle(color: orangeColor, fontSize: 13, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(Icons.arrow_forward_ios_rounded, color: orangeColor, size: 12),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+          // Only display history in Advanced mode
+          if (!_isSimpleMode) ...[
+            const SizedBox(height: 24),
 
-          // Display last transaction info
-          if (_isLoadingLastTxn) ...[
-            Center(child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: CircularProgressIndicator(color: orangeColor),
-            )),
-          ] else if (_txnError != null) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Text(
-                _txnError!,
-                style: const TextStyle(color: Colors.redAccent, fontSize: 13),
-                textAlign: TextAlign.center,
-              ),
+            // Title of last transaction with navigation link
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "DERNIÈRE TRANSACTION",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _navigateToHistory(context),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(50, 30),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        "Voir l'historique",
+                        style: TextStyle(color: orangeColor, fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.arrow_forward_ios_rounded, color: orangeColor, size: 12),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ] else if (_lastTransaction == null) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: darkCardColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white12, width: 0.8),
-              ),
-              child: const Text(
-                "Aucune transaction récente.",
-                style: TextStyle(color: Colors.white30, fontSize: 13),
-              ),
-            ),
-          ] else ...[
-            () {
-              final String type = _lastTransaction!["type"] as String? ?? "";
-              final String sender = _lastTransaction!["sender"] as String? ?? "";
-              final String receiver = _lastTransaction!["receiver"] as String? ?? "";
-              final double amount = (_lastTransaction!["amount"] as num?)?.toDouble() ?? 0.0;
+            const SizedBox(height: 12),
 
-              final bool isIncomingTransfer = type == "TRANSFERT" && receiver == widget.identifier;
-
-              IconData icon = Icons.payment_rounded;
-              String label = "Transaction";
-              Color color = orangeColor;
-              if (type == "DEPOT" || isIncomingTransfer) {
-                icon = type == "DEPOT" ? Icons.add_circle_outline_rounded : Icons.swap_horiz_rounded;
-                label = type == "DEPOT" ? "Dépôt Reçu" : "Transfert Reçu";
-                color = Colors.greenAccent;
-              } else if (type == "RETRAIT") {
-                icon = Icons.remove_circle_outline_rounded;
-                label = "Retrait";
-                color = Colors.redAccent;
-              } else if (type == "TRANSFERT") {
-                icon = Icons.swap_horiz_rounded;
-                label = "Transfert d'argent";
-              } else if (type == "ACHAT_CREDIT") {
-                icon = Icons.phone_android_rounded;
-                label = "Achat Crédit";
-              } else if (type == "ACHAT_INTERNET") {
-                icon = Icons.language_rounded;
-                label = "Pass Internet";
-              } else if (type == "ACHAT_ILLIMIX") {
-                icon = Icons.all_inclusive_rounded;
-                label = "Pass Illimix";
-              } else if (type == "ACHAT_ILLIFLEX") {
-                icon = Icons.swap_calls_rounded;
-                label = "Pass Illiflex";
-              } else if (type == "PAIEMENT_RAPIDO") {
-                icon = Icons.directions_car_rounded;
-                label = "Recharge Rapido";
-              }
-
-              final String directionLabel = (type == "DEPOT")
-                  ? "Depuis : Admin / Dépôt"
-                  : (type == "RETRAIT")
-                      ? "Depuis : Distributeur"
-                      : (receiver == widget.identifier)
-                          ? "Reçu de : $sender"
-                          : "Destinataire : $receiver";
-
-              final String prefixSymbol = (type == "DEPOT" || isIncomingTransfer) ? "+" : "-";
-
-              return Container(
+            // Display last transaction info
+            if (_isLoadingLastTxn) ...[
+              Center(child: Padding(
                 padding: const EdgeInsets.all(16.0),
+                child: CircularProgressIndicator(color: orangeColor),
+              )),
+            ] else if (_txnError != null) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  _txnError!,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ] else if (_lastTransaction == null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: darkCardColor,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.white12, width: 0.8),
                 ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: color.withOpacity(0.08),
-                      radius: 22,
-                      child: Icon(icon, color: color, size: 20),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            label,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            directionLabel,
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      "$prefixSymbol ${amount.toStringAsFixed(0)} F",
-                      style: TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ],
+                child: const Text(
+                  "Aucune transaction récente.",
+                  style: TextStyle(color: Colors.white30, fontSize: 13),
                 ),
-              );
-            }(),
+              ),
+            ] else ...[
+              () {
+                final String type = _lastTransaction!["type"] as String? ?? "";
+                final String sender = _lastTransaction!["sender"] as String? ?? "";
+                final String receiver = _lastTransaction!["receiver"] as String? ?? "";
+                final double amount = (_lastTransaction!["amount"] as num?)?.toDouble() ?? 0.0;
+
+                final bool isIncomingTransfer = type == "TRANSFERT" && receiver == widget.identifier;
+
+                IconData icon = Icons.payment_rounded;
+                String label = "Transaction";
+                Color color = orangeColor;
+                if (type == "DEPOT" || isIncomingTransfer) {
+                  icon = type == "DEPOT" ? Icons.add_circle_outline_rounded : Icons.swap_horiz_rounded;
+                  label = type == "DEPOT" ? "Dépôt Reçu" : "Transfert Reçu";
+                  color = Colors.greenAccent;
+                } else if (type == "RETRAIT") {
+                  icon = Icons.remove_circle_outline_rounded;
+                  label = "Retrait";
+                  color = Colors.redAccent;
+                } else if (type == "TRANSFERT") {
+                  icon = Icons.swap_horiz_rounded;
+                  label = "Transfert d'argent";
+                } else if (type == "ACHAT_CREDIT") {
+                  icon = Icons.phone_android_rounded;
+                  label = "Achat Crédit";
+                } else if (type == "ACHAT_INTERNET") {
+                  icon = Icons.language_rounded;
+                  label = "Pass Internet";
+                } else if (type == "ACHAT_ILLIMIX") {
+                  icon = Icons.all_inclusive_rounded;
+                  label = "Pass Illimix";
+                } else if (type == "ACHAT_ILLIFLEX") {
+                  icon = Icons.swap_calls_rounded;
+                  label = "Pass Illiflex";
+                } else if (type == "PAIEMENT_RAPIDO") {
+                  icon = Icons.directions_car_rounded;
+                  label = "Recharge Rapido";
+                }
+
+                final String directionLabel = (type == "DEPOT")
+                    ? "Depuis : Admin / Dépôt"
+                    : (type == "RETRAIT")
+                        ? "Depuis : Distributeur"
+                        : (receiver == widget.identifier)
+                            ? "Reçu de : $sender"
+                            : "Destinataire : $receiver";
+
+                final String prefixSymbol = (type == "DEPOT" || isIncomingTransfer) ? "+" : "-";
+
+                return Container(
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color: darkCardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white12, width: 0.8),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: color.withOpacity(0.08),
+                        radius: 22,
+                        child: Icon(icon, color: color, size: 20),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              label,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              directionLabel,
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        "$prefixSymbol ${amount.toStringAsFixed(0)} F",
+                        style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }(),
+            ],
           ],
         ],
       ),
@@ -992,21 +1344,73 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-    // Refresh last transaction when coming back
+    // Refresh last transaction and account balance when coming back
     _fetchLastTransaction();
+    _fetchAccountDetails();
+  }
+
+  String _getObfuscatedPhone(String raw) {
+    if (raw.length < 9) return raw;
+    final first = raw.substring(0, 2);
+    final last = raw.substring(raw.length - 2);
+    return "$first *** ** $last";
+  }
+
+  Widget _buildMockQrCode() {
+    return Container(
+      width: 80,
+      height: 80,
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Stack(
+        children: [
+          GridView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              crossAxisSpacing: 2,
+              mainAxisSpacing: 2,
+            ),
+            itemCount: 49,
+            itemBuilder: (context, index) {
+              bool isCorner = (index < 3 && index % 7 < 3) ||
+                  (index < 3 && index % 7 > 4) ||
+                  (index > 45 && index % 7 < 3);
+              bool isDark = (index * 31 + 17) % 3 == 0 || isCorner;
+              return Container(
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.black87 : Colors.transparent,
+                  borderRadius: BorderRadius.circular(isCorner ? 2 : 1),
+                ),
+              );
+            },
+          ),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFFF7900), width: 1.5),
+              ),
+              child: const Icon(
+                Icons.camera_alt_rounded,
+                color: Color(0xFFFF7900),
+                size: 10,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
 class MaxItSearchDelegate extends SearchDelegate<String> {
   final List<String> servicesList = [
-    "Achat Crédit",
-    "Achat Illiflex",
-    "Achat Illimix",
-    "Achat Internet",
-    "Dépôt",
-    "Retrait",
-    "Rapido",
-    "Transfert",
   ];
 
   @override
