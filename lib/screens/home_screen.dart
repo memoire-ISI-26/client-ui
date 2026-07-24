@@ -11,6 +11,20 @@ import 'package:client_ui/screens/withdrawal_screen.dart';
 import 'package:client_ui/screens/rapido_screen.dart';
 import 'package:client_ui/screens/transfert_screen.dart';
 
+class ServiceItem {
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+  final String key;
+
+  ServiceItem({
+    required this.title,
+    required this.icon,
+    required this.onTap,
+    required this.key,
+  });
+}
+
 class HomeScreen extends StatefulWidget {
   final String token;
   final String role;
@@ -44,12 +58,160 @@ class _HomeScreenState extends State<HomeScreen> {
   int _simulatedCallMinutes = 0;
   int _simulatedSms = 0;
 
+  List<ServiceItem> _telcoServices = [];
+  List<ServiceItem> _omyServices = [];
+
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _activeUniverseIndex);
+    ApiService.activeMode = _isSimpleMode ? "SIMPLE" : "ADVANCE";
+    ApiService.activeUniverse = _activeUniverseIndex == 1 ? "OMY" : "TELCO";
+    _initServices();
     _fetchLastTransaction();
     _fetchAccountDetails();
+    _fetchPersonalization();
+  }
+
+  void _initServices() {
+    _telcoServices = [
+      ServiceItem(
+        title: "Achat Crédit",
+        icon: Icons.phone_android_rounded,
+        onTap: () => _handleAchatCreditTap(context, "TELCO.SERVICES.PASS.VOICE"),
+        key: "TELCO.SERVICES.PASS.VOICE",
+      ),
+      ServiceItem(
+        title: "Achat Illiflex",
+        icon: Icons.swap_calls_rounded,
+        onTap: () => _handleAchatIlliflexTap(context),
+        key: "TELCO.SERVICES.PASS.ILLIFLEX",
+      ),
+      ServiceItem(
+        title: "Achat Illimix",
+        icon: Icons.all_inclusive_rounded,
+        onTap: () => _handleAchatIllimixTap(context),
+        key: "TELCO.SERVICES.PASS.ILLIMIX",
+      ),
+      ServiceItem(
+        title: "Achat Internet",
+        icon: Icons.language_rounded,
+        onTap: () => _handleAchatInternetTap(context),
+        key: "TELCO.SERVICES.PASS.DATA",
+      ),
+    ];
+
+    _omyServices = [
+      ServiceItem(
+        title: "Achat Crédit",
+        icon: Icons.phone_android_rounded,
+        onTap: () => _handleAchatCreditTap(context, "OMY.SERVICES.VOICEBUNDLE"),
+        key: "OMY.SERVICES.VOICEBUNDLE",
+      ),
+      ServiceItem(
+        title: "Achat Illiflex",
+        icon: Icons.swap_calls_rounded,
+        onTap: () => _handleAchatIlliflexTap(context),
+        key: "OMY.SERVICES.VOICEBUNDLE",
+      ),
+      ServiceItem(
+        title: "Achat Illimix",
+        icon: Icons.all_inclusive_rounded,
+        onTap: () => _handleAchatIllimixTap(context),
+        key: "OMY.SERVICES.VOICEBUNDLE",
+      ),
+      ServiceItem(
+        title: "Achat Internet",
+        icon: Icons.language_rounded,
+        onTap: () => _handleAchatInternetTap(context),
+        key: "OMY.SERVICES.VOICEBUNDLE",
+      ),
+      ServiceItem(
+        title: "Rapido",
+        icon: Icons.directions_car_rounded,
+        onTap: () => _handleRapidoTap(context),
+        key: "RAPIDO",
+      ),
+      ServiceItem(
+        title: "Transfert",
+        icon: Icons.swap_horiz_rounded,
+        onTap: () => _handleTransfertTap(context),
+        key: "OMY.SERVICES.TRANSFERT",
+      ),
+      ServiceItem(
+        title: "Dépôt",
+        icon: Icons.add_circle_outline_rounded,
+        onTap: () => _handleDepositTap(context),
+        key: "DEPOT",
+      ),
+      ServiceItem(
+        title: "Retrait",
+        icon: Icons.remove_circle_outline_rounded,
+        onTap: () => _handleWithdrawalTap(context),
+        key: "OMY.SERVICES.RETRAIT",
+      ),
+    ];
+  }
+
+  Future<void> _fetchPersonalization() async {
+    try {
+      final res = await ApiService.getPersonalization(widget.identifier, widget.token);
+      final dataList = res["data"] as List<dynamic>?;
+      if (dataList != null && dataList.isNotEmpty) {
+        final profile = dataList.first as Map<String, dynamic>;
+        final source = profile["_source"] as Map<String, dynamic>?;
+        if (source != null) {
+          final String? univers = source["univers"] as String?;
+          final String? mode = source["mode"] as String?;
+          final List<dynamic>? servicesList = source["liste_de_services"] as List<dynamic>?;
+
+          if (!mounted) return;
+          setState(() {
+            if (univers == "OMY") {
+              _activeUniverseIndex = 1;
+              _pageController.jumpToPage(1);
+              ApiService.activeUniverse = "OMY";
+            } else if (univers == "TELCO") {
+              _activeUniverseIndex = 0;
+              _pageController.jumpToPage(0);
+              ApiService.activeUniverse = "TELCO";
+            }
+
+            if (mode == "SIMPLE") {
+              _isSimpleMode = true;
+              ApiService.activeMode = "SIMPLE";
+            } else if (mode == "ADVANCE") {
+              _isSimpleMode = false;
+              ApiService.activeMode = "ADVANCE";
+            }
+
+            if (servicesList != null && servicesList.isNotEmpty) {
+              final preferredServiceIds = servicesList.map((s) => s.toString()).toList();
+              
+              // Trier les services selon les préférences HDFS
+              _sortServices(_telcoServices, preferredServiceIds);
+              _sortServices(_omyServices, preferredServiceIds);
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Erreur lors de la recuperation de la personnalisation: $e");
+    }
+  }
+
+  void _sortServices(List<ServiceItem> services, List<String> preferredServiceIds) {
+    services.sort((a, b) {
+      int indexA = preferredServiceIds.indexOf(a.key);
+      int indexB = preferredServiceIds.indexOf(b.key);
+
+      if (indexA != -1 && indexB != -1) {
+        return indexA.compareTo(indexB);
+      }
+      if (indexA != -1) return -1;
+      if (indexB != -1) return 1;
+      return 0;
+    });
   }
 
   @override
@@ -219,6 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           onTap: () {
                             setState(() {
                               _isSimpleMode = !_isSimpleMode;
+                              ApiService.activeMode = _isSimpleMode ? "SIMPLE" : "ADVANCE";
                             });
                           },
                           child: Container(
@@ -317,6 +480,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       onPageChanged: (index) {
                         setState(() {
                           _activeUniverseIndex = index;
+                          ApiService.activeUniverse = index == 1 ? "OMY" : "TELCO";
                         });
                       },
                       children: [
@@ -514,48 +678,61 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.3,
-            children: [
-              _buildServiceItem(
-                context,
-                "Achat Crédit",
-                Icons.phone_android_rounded,
-                orangeColor,
-                darkCardColor,
-                () => _handleAchatCreditTap(context),
-              ),
-              _buildServiceItem(
-                context,
-                "Achat Illiflex",
-                Icons.swap_calls_rounded,
-                orangeColor,
-                darkCardColor,
-                () => _handleAchatIlliflexTap(context),
-              ),
-              _buildServiceItem(
-                context,
-                "Achat Illimix",
-                Icons.all_inclusive_rounded,
-                orangeColor,
-                darkCardColor,
-                () => _handleAchatIllimixTap(context),
-              ),
-              _buildServiceItem(
-                context,
-                "Achat Internet",
-                Icons.language_rounded,
-                orangeColor,
-                darkCardColor,
-                () => _handleAchatInternetTap(context),
-              ),
-            ],
-          ),
+          _isSimpleMode
+              ? GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 0.85,
+                  children: [
+                    ..._telcoServices.take(3).map((service) {
+                      return _buildSimpleServiceItem(
+                        context,
+                        service.title,
+                        service.icon,
+                        orangeColor,
+                        darkCardColor,
+                        service.onTap,
+                      );
+                    }),
+                    _buildSimpleServiceItem(
+                      context,
+                      "Services",
+                      Icons.apps_rounded,
+                      orangeColor,
+                      darkCardColor,
+                      () {
+                        _showAllServicesModal(
+                          context,
+                          "TELCO",
+                          _telcoServices,
+                          orangeColor,
+                          darkCardColor,
+                        );
+                      },
+                    ),
+                  ],
+                )
+              : GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 0.85,
+                  children: _telcoServices.map((service) {
+                    return _buildSimpleServiceItem(
+                      context,
+                      service.title,
+                      service.icon,
+                      orangeColor,
+                      darkCardColor,
+                      service.onTap,
+                    );
+                  }).toList(),
+                ),
           const SizedBox(height: 24),
 
           // TELCO Bottom Card: Call Minutes and SMS
@@ -707,84 +884,62 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.3,
-            children: [
-              _buildServiceItem(
-                context,
-                "Achat Crédit",
-                Icons.phone_android_rounded,
-                orangeColor,
-                darkCardColor,
-                () => _handleAchatCreditTap(context),
-              ),
-              _buildServiceItem(
-                context,
-                "Achat Illiflex",
-                Icons.swap_calls_rounded,
-                orangeColor,
-                darkCardColor,
-                () => _handleAchatIlliflexTap(context),
-              ),
-              _buildServiceItem(
-                context,
-                "Achat Illimix",
-                Icons.all_inclusive_rounded,
-                orangeColor,
-                darkCardColor,
-                () => _handleAchatIllimixTap(context),
-              ),
-              _buildServiceItem(
-                context,
-                "Achat Internet",
-                Icons.language_rounded,
-                orangeColor,
-                darkCardColor,
-                () => _handleAchatInternetTap(context),
-              ),
-              _buildServiceItem(
-                context,
-                "Rapido",
-                Icons.directions_car_rounded,
-                orangeColor,
-                darkCardColor,
-                () => _handleRapidoTap(context),
-              ),
-              _buildServiceItem(
-                context,
-                "Transfert",
-                Icons.swap_horiz_rounded,
-                orangeColor,
-                darkCardColor,
-                () => _handleTransfertTap(context),
-              ),
-              _buildServiceItem(
-                context,
-                "Dépôt",
-                Icons.add_circle_outline_rounded,
-                orangeColor,
-                darkCardColor,
-                () => _handleDepositTap(context),
-              ),
-              _buildServiceItem(
-                context,
-                "Retrait",
-                Icons.remove_circle_outline_rounded,
-                orangeColor,
-                darkCardColor,
-                () => _handleWithdrawalTap(context),
-              ),
-            ],
-          ),
-
-          // Only display history in Advanced mode
-          if (!_isSimpleMode) ...[
-            const SizedBox(height: 24),
+          _isSimpleMode
+              ? GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 0.85,
+                  children: [
+                    ..._omyServices.take(3).map((service) {
+                      return _buildSimpleServiceItem(
+                        context,
+                        service.title,
+                        service.icon,
+                        orangeColor,
+                        darkCardColor,
+                        service.onTap,
+                      );
+                    }),
+                    _buildSimpleServiceItem(
+                      context,
+                      "Services",
+                      Icons.apps_rounded,
+                      orangeColor,
+                      darkCardColor,
+                      () {
+                        _showAllServicesModal(
+                          context,
+                          "OMY",
+                          _omyServices,
+                          orangeColor,
+                          darkCardColor,
+                        );
+                      },
+                    ),
+                  ],
+                )
+              : GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 0.85,
+                  children: _omyServices.map((service) {
+                    return _buildSimpleServiceItem(
+                      context,
+                      service.title,
+                      service.icon,
+                      orangeColor,
+                      darkCardColor,
+                      service.onTap,
+                    );
+                  }).toList(),
+                ),
+          const SizedBox(height: 24),
 
             // Title of last transaction with navigation link
             Row(
@@ -951,7 +1106,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               }(),
             ],
-          ],
         ],
       ),
     );
@@ -1081,7 +1235,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildServiceItem(
+  Widget _buildSimpleServiceItem(
     BuildContext context,
     String title,
     IconData icon,
@@ -1093,29 +1247,31 @@ class _HomeScreenState extends State<HomeScreen> {
       margin: EdgeInsets.zero,
       color: darkCardColor,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: Colors.grey[800]!, width: 0.5),
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 icon,
                 color: orangeColor,
-                size: 36,
+                size: 24,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 6),
               Text(
                 title,
                 textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
+                  fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1126,19 +1282,98 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _handleAchatCreditTap(BuildContext context) async {
+  void _showAllServicesModal(
+    BuildContext context,
+    String universeName,
+    List<ServiceItem> services,
+    Color orangeColor,
+    Color darkCardColor,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "SERVICES $universeName",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                      onPressed: () => Navigator.pop(context),
+                      constraints: const BoxConstraints(),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.85,
+                  children: services.map((service) {
+                    return _buildSimpleServiceItem(
+                      context,
+                      service.title,
+                      service.icon,
+                      orangeColor,
+                      darkCardColor,
+                      () {
+                        Navigator.pop(context); // Fermer le modal
+                        service.onTap(); // Executer l'action
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+
+
+  void _refreshData() {
+    _fetchLastTransaction();
+    _fetchAccountDetails();
+  }
+
+  void _handleAchatCreditTap(BuildContext context, String serviceKey) async {
     final success = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => AchatCreditScreen(
           myNumber: widget.identifier,
           token: widget.token,
+          serviceKey: serviceKey,
         ),
       ),
     );
 
     if (success == true && context.mounted) {
-      _fetchLastTransaction();
+      _refreshData();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text("Achat de crédit effectué avec succès !"),
@@ -1164,7 +1399,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (success == true && context.mounted) {
-      _fetchLastTransaction();
+      _refreshData();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text("Achat de Pass Internet effectué avec succès !"),
@@ -1190,7 +1425,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (success == true && context.mounted) {
-      _fetchLastTransaction();
+      _refreshData();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text("Achat de Pass Illimix effectué avec succès !"),
@@ -1216,7 +1451,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (success == true && context.mounted) {
-      _fetchLastTransaction();
+      _refreshData();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text("Achat de Pass Illiflex effectué avec succès !"),
@@ -1242,7 +1477,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (success == true && context.mounted) {
-      _fetchLastTransaction();
+      _refreshData();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text("Recharge de carte Rapido effectuée avec succès !"),
@@ -1268,7 +1503,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (success == true && context.mounted) {
-      _fetchLastTransaction();
+      _refreshData();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text("Transfert d'argent effectué avec succès !"),
@@ -1294,7 +1529,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (success == true && context.mounted) {
-      _fetchLastTransaction();
+      _refreshData();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text("Dépôt d'argent effectué avec succès !"),
@@ -1320,7 +1555,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (success == true && context.mounted) {
-      _fetchLastTransaction();
+      _refreshData();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text("Retrait d'argent effectué avec succès !"),
