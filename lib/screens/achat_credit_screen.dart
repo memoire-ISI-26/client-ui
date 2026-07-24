@@ -5,11 +5,13 @@ import 'package:client_ui/services/favorites_service.dart';
 class AchatCreditScreen extends StatefulWidget {
   final String myNumber;
   final String token;
+  final String serviceKey;
 
   const AchatCreditScreen({
     super.key,
     required this.myNumber,
     required this.token,
+    required this.serviceKey,
   });
 
   @override
@@ -260,6 +262,7 @@ class _AchatCreditScreenState extends State<AchatCreditScreen> {
         sender: widget.myNumber,
         receiver: _recipientController.text.trim(),
         amount: amount,
+        paymentMethod: widget.serviceKey,
         token: widget.token,
       );
 
