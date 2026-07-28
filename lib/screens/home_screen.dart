@@ -60,6 +60,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<ServiceItem> _telcoServices = [];
   List<ServiceItem> _omyServices = [];
+  List<String> _preferredServiceIds = [];
+  Map<String, List<String>> _defaultServices = {
+    "OMY": ["OMY.SERVICES.TRANSFERT", "OMY.SERVICES.VOICEBUNDLE"],
+    "TELCO": ["TELCO.SERVICES.PASS.VOICE", "TELCO.SERVICES.PASS.DATA"]
+  };
+  Map<String, List<String>> _defaultServicesAdvanced = {
+    "OMY": ["OMY.SERVICES.TRANSFERT", "OMY.SERVICES.VOICEBUNDLE", "DEPOT", "OMY.SERVICES.RETRAIT", "RAPIDO"],
+    "TELCO": ["TELCO.SERVICES.PASS.VOICE", "TELCO.SERVICES.PASS.DATA", "TELCO.SERVICES.PASS.ILLIMIX", "TELCO.SERVICES.PASS.ILLIFLEX", "TELCO.SERVICES.PASS.VOICE"]
+  };
 
   @override
   void initState() {
@@ -71,6 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchLastTransaction();
     _fetchAccountDetails();
     _fetchPersonalization();
+    _fetchDefaultServices();
   }
 
   void _initServices() {
@@ -103,27 +113,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _omyServices = [
       ServiceItem(
-        title: "Achat Crédit",
+        title: "Crédit / Pass",
         icon: Icons.phone_android_rounded,
-        onTap: () => _handleAchatCreditTap(context, "OMY.SERVICES.VOICEBUNDLE"),
-        key: "OMY.SERVICES.VOICEBUNDLE",
-      ),
-      ServiceItem(
-        title: "Achat Illiflex",
-        icon: Icons.swap_calls_rounded,
-        onTap: () => _handleAchatIlliflexTap(context),
-        key: "OMY.SERVICES.VOICEBUNDLE",
-      ),
-      ServiceItem(
-        title: "Achat Illimix",
-        icon: Icons.all_inclusive_rounded,
-        onTap: () => _handleAchatIllimixTap(context),
-        key: "OMY.SERVICES.VOICEBUNDLE",
-      ),
-      ServiceItem(
-        title: "Achat Internet",
-        icon: Icons.language_rounded,
-        onTap: () => _handleAchatInternetTap(context),
+        onTap: () => _showCreditPassModal(context),
         key: "OMY.SERVICES.VOICEBUNDLE",
       ),
       ServiceItem(
@@ -187,6 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             if (servicesList != null && servicesList.isNotEmpty) {
               final preferredServiceIds = servicesList.map((s) => s.toString()).toList();
+              _preferredServiceIds = preferredServiceIds;
               
               // Trier les services selon les préférences HDFS
               _sortServices(_telcoServices, preferredServiceIds);
@@ -212,6 +205,123 @@ class _HomeScreenState extends State<HomeScreen> {
       if (indexB != -1) return 1;
       return 0;
     });
+  }
+
+  Future<void> _fetchDefaultServices() async {
+    try {
+      final data = await ApiService.getDefaultServices(widget.token);
+      if (mounted) {
+        setState(() {
+          for (final config in data) {
+            final String? universe = config["universe"] as String?;
+            final String? id1 = config["serviceId1"] as String?;
+            final String? id2 = config["serviceId2"] as String?;
+            final String? adv1 = config["advServiceId1"] as String?;
+            final String? adv2 = config["advServiceId2"] as String?;
+            final String? adv3 = config["advServiceId3"] as String?;
+            final String? adv4 = config["advServiceId4"] as String?;
+            final String? adv5 = config["advServiceId5"] as String?;
+
+            if (universe != null) {
+              if (id1 != null && id2 != null) {
+                _defaultServices[universe] = [id1, id2];
+              }
+              if (adv1 != null && adv2 != null && adv3 != null && adv4 != null && adv5 != null) {
+                _defaultServicesAdvanced[universe] = [adv1, adv2, adv3, adv4, adv5];
+              }
+            }
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Erreur lors de la recuperation des services par defaut: $e");
+    }
+  }
+
+  List<ServiceItem> _getFilteredSimpleServices(List<ServiceItem> allServices, String universe) {
+    final defaults = _defaultServices[universe] ?? [];
+    final preferred = _preferredServiceIds.where((id) => !defaults.contains(id)).toList();
+    
+    String? thirdServiceKey;
+    if (preferred.isNotEmpty) {
+      thirdServiceKey = preferred.first;
+    }
+    
+    final List<ServiceItem> result = [];
+    
+    ServiceItem? findService(String key) {
+      try {
+        return allServices.firstWhere((s) => s.key == key);
+      } catch (_) {
+        return null;
+      }
+    }
+    
+    if (defaults.isNotEmpty) {
+      final s = findService(defaults[0]);
+      if (s != null) result.add(s);
+    }
+    if (defaults.length > 1) {
+      final s = findService(defaults[1]);
+      if (s != null) result.add(s);
+    }
+    if (thirdServiceKey != null) {
+      final s = findService(thirdServiceKey);
+      if (s != null) result.add(s);
+    }
+    
+    for (final s in allServices) {
+      if (result.length >= 3) break;
+      if (!result.contains(s)) {
+        result.add(s);
+      }
+    }
+    
+    return result;
+  }
+
+  List<ServiceItem> _getFilteredAdvancedServices(List<ServiceItem> allServices, String universe) {
+    final defaults = _defaultServicesAdvanced[universe] ?? [];
+    final preferred = _preferredServiceIds.where((id) => !defaults.contains(id)).toList();
+    
+    final List<String> personalizations = [];
+    for (final id in preferred) {
+      if (personalizations.length >= 2) break;
+      personalizations.add(id);
+    }
+    
+    final List<ServiceItem> result = [];
+    
+    ServiceItem? findService(String key) {
+      try {
+        return allServices.firstWhere((s) => s.key == key);
+      } catch (_) {
+        return null;
+      }
+    }
+    
+    for (final key in defaults) {
+      final s = findService(key);
+      if (s != null && !result.contains(s)) {
+        result.add(s);
+      }
+    }
+    
+    for (final key in personalizations) {
+      final s = findService(key);
+      if (s != null && !result.contains(s)) {
+        result.add(s);
+      }
+    }
+    
+    for (final s in allServices) {
+      if (result.length >= 7) break;
+      if (!result.contains(s)) {
+        result.add(s);
+      }
+    }
+    
+    return result;
   }
 
   @override
@@ -687,7 +797,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisSpacing: 8,
                   childAspectRatio: 0.85,
                   children: [
-                    ..._telcoServices.take(3).map((service) {
+                    ..._getFilteredSimpleServices(_telcoServices, "TELCO").map((service) {
                       return _buildSimpleServiceItem(
                         context,
                         service.title,
@@ -722,7 +832,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisSpacing: 8,
                   mainAxisSpacing: 8,
                   childAspectRatio: 0.85,
-                  children: _telcoServices.map((service) {
+                  children: _getFilteredAdvancedServices(_telcoServices, "TELCO").map((service) {
                     return _buildSimpleServiceItem(
                       context,
                       service.title,
@@ -893,7 +1003,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisSpacing: 8,
                   childAspectRatio: 0.85,
                   children: [
-                    ..._omyServices.take(3).map((service) {
+                    ..._getFilteredSimpleServices(_omyServices, "OMY").map((service) {
                       return _buildSimpleServiceItem(
                         context,
                         service.title,
@@ -928,16 +1038,34 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisSpacing: 8,
                   mainAxisSpacing: 8,
                   childAspectRatio: 0.85,
-                  children: _omyServices.map((service) {
-                    return _buildSimpleServiceItem(
+                  children: [
+                    ..._getFilteredAdvancedServices(_omyServices, "OMY").map((service) {
+                      return _buildSimpleServiceItem(
+                        context,
+                        service.title,
+                        service.icon,
+                        orangeColor,
+                        darkCardColor,
+                        service.onTap,
+                      );
+                    }),
+                    _buildSimpleServiceItem(
                       context,
-                      service.title,
-                      service.icon,
+                      "Services",
+                      Icons.apps_rounded,
                       orangeColor,
                       darkCardColor,
-                      service.onTap,
-                    );
-                  }).toList(),
+                      () {
+                        _showAllServicesModal(
+                          context,
+                          "OMY",
+                          _omyServices,
+                          orangeColor,
+                          darkCardColor,
+                        );
+                      },
+                    ),
+                  ],
                 ),
           const SizedBox(height: 24),
 
@@ -1331,7 +1459,102 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
                   childAspectRatio: 0.85,
-                  children: services.map((service) {
+                  children: services.skip(3).map((service) {
+                    return _buildSimpleServiceItem(
+                      context,
+                      service.title,
+                      service.icon,
+                      orangeColor,
+                      darkCardColor,
+                      () {
+                        Navigator.pop(context); // Fermer le modal
+                        service.onTap(); // Executer l'action
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCreditPassModal(BuildContext context) {
+    const orangeColor = Color(0xFFFF7900);
+    const darkCardColor = Color(0xFF1E1E1E);
+
+    final purchaseServices = [
+      ServiceItem(
+        title: "Achat Crédit",
+        icon: Icons.phone_android_rounded,
+        onTap: () => _handleAchatCreditTap(context, "OMY.SERVICES.VOICEBUNDLE"),
+        key: "OMY.SERVICES.VOICEBUNDLE",
+      ),
+      ServiceItem(
+        title: "Achat Illimix",
+        icon: Icons.all_inclusive_rounded,
+        onTap: () => _handleAchatIllimixTap(context),
+        key: "OMY.SERVICES.VOICEBUNDLE",
+      ),
+      ServiceItem(
+        title: "Achat Internet",
+        icon: Icons.language_rounded,
+        onTap: () => _handleAchatInternetTap(context),
+        key: "OMY.SERVICES.VOICEBUNDLE",
+      ),
+      ServiceItem(
+        title: "Achat Illiflex",
+        icon: Icons.swap_calls_rounded,
+        onTap: () => _handleAchatIlliflexTap(context),
+        key: "OMY.SERVICES.VOICEBUNDLE",
+      ),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "CREDIT / PASS",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                      onPressed: () => Navigator.pop(context),
+                      constraints: const BoxConstraints(),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.85,
+                  children: purchaseServices.map((service) {
                     return _buildSimpleServiceItem(
                       context,
                       service.title,
@@ -1358,6 +1581,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _refreshData() {
     _fetchLastTransaction();
     _fetchAccountDetails();
+    _fetchDefaultServices();
   }
 
   void _handleAchatCreditTap(BuildContext context, String serviceKey) async {
