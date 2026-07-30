@@ -160,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 borderSide: BorderSide(color: orangeColor, width: 2),
                               ),
                             ),
-                            keyboardType: TextInputType.phone,
+                            keyboardType: TextInputType.text,
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
                                 return 'Veuillez saisir votre identifiant ou numéro.';
