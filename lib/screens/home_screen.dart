@@ -10,6 +10,7 @@ import 'package:client_ui/screens/deposit_screen.dart';
 import 'package:client_ui/screens/withdrawal_screen.dart';
 import 'package:client_ui/screens/rapido_screen.dart';
 import 'package:client_ui/screens/transfert_screen.dart';
+import 'package:client_ui/screens/achat_international_screen.dart';
 
 class ServiceItem {
   final String title;
@@ -61,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<ServiceItem> _telcoServices = [];
   List<ServiceItem> _omyServices = [];
   List<String> _preferredServiceIds = [];
+  Map<String, List<String>> _preferredServiceIdsMap = {};
   Map<String, List<String>> _defaultServices = {
     "OMY": ["OMY.SERVICES.TRANSFERT", "OMY.SERVICES.VOICEBUNDLE"],
     "TELCO": ["TELCO.SERVICES.PASS.VOICE", "TELCO.SERVICES.PASS.DATA"]
@@ -83,6 +85,15 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchDefaultServices();
   }
 
+  void _handleGenericServiceTap(String serviceName) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Le service $serviceName est bientôt disponible."),
+        backgroundColor: const Color(0xFFFF7900),
+      ),
+    );
+  }
+
   void _initServices() {
     _telcoServices = [
       ServiceItem(
@@ -92,22 +103,94 @@ class _HomeScreenState extends State<HomeScreen> {
         key: "TELCO.SERVICES.PASS.VOICE",
       ),
       ServiceItem(
-        title: "Achat Illiflex",
+        title: "Pass Illiflex",
         icon: Icons.swap_calls_rounded,
         onTap: () => _handleAchatIlliflexTap(context),
         key: "TELCO.SERVICES.PASS.ILLIFLEX",
       ),
       ServiceItem(
-        title: "Achat Illimix",
+        title: "Pass Illimix",
         icon: Icons.all_inclusive_rounded,
         onTap: () => _handleAchatIllimixTap(context),
         key: "TELCO.SERVICES.PASS.ILLIMIX",
       ),
       ServiceItem(
-        title: "Achat Internet",
+        title: "Pass Internet",
         icon: Icons.language_rounded,
         onTap: () => _handleAchatInternetTap(context),
         key: "TELCO.SERVICES.PASS.DATA",
+      ),
+      ServiceItem(
+        title: "Pass Internationaux",
+        icon: Icons.language_rounded,
+        onTap: () => _handlePassInternationalTap(context),
+        key: "TELCO.SERVICES.PASS.INTERNATIONAL",
+      ),
+      ServiceItem(
+        title: "Fibre",
+        icon: Icons.router_rounded,
+        onTap: () => _handleGenericServiceTap("Internet Maison"),
+        key: "TELCO.SERVICES.HOME_INTERNET",
+      ),
+      ServiceItem(
+        title: "Fidélité",
+        icon: Icons.card_giftcard_rounded,
+        onTap: () => _handleGenericServiceTap("Fidélité"),
+        key: "TELCO.SERVICES.LOYALTY",
+      ),
+      ServiceItem(
+        title: "SOS Crédit",
+        icon: Icons.sos_rounded,
+        onTap: () => _handleGenericServiceTap("SOS Crédit"),
+        key: "TELCO.SERVICES.SOS_CREDIT",
+      ),
+      ServiceItem(
+        title: "P2P Bonus",
+        icon: Icons.card_membership_rounded,
+        onTap: () => _handleGenericServiceTap("P2P Bonus"),
+        key: "TELCO.SERVICES.P2P_BONUS",
+      ),
+      ServiceItem(
+        title: "Pass Mixel",
+        icon: Icons.interests_rounded,
+        onTap: () => _handleGenericServiceTap("Pass Mixel"),
+        key: "TELCO.SERVICES.PASS.MIXEL",
+      ),
+      ServiceItem(
+        title: "Sonatel",
+        icon: Icons.business_rounded,
+        onTap: () => _handleGenericServiceTap("Sonatel"),
+        key: "SONATELF_MAIN_PAGE",
+      ),
+      ServiceItem(
+        title: "Pass Voyage",
+        icon: Icons.flight_takeoff_rounded,
+        onTap: () => _handleGenericServiceTap("Pass Voyage"),
+        key: "TELCO.SERVICES.PASS.TRAVEL",
+      ),
+      ServiceItem(
+        title: "P2P Transfert",
+        icon: Icons.swap_horizontal_circle_rounded,
+        onTap: () => _handleGenericServiceTap("P2P Transfert"),
+        key: "TELCO.SERVICES.P2P",
+      ),
+      ServiceItem(
+        title: "Pass Wido",
+        icon: Icons.video_library_rounded,
+        onTap: () => _handleGenericServiceTap("Pass Wido"),
+        key: "TELCO.SERVICES.PASS.WIDO",
+      ),
+      ServiceItem(
+        title: "Dalal Tones",
+        icon: Icons.music_note_rounded,
+        onTap: () => _handleGenericServiceTap("Dalal Tones"),
+        key: "TELCO.SERVICES.LEISURE.DALAL",
+      ),
+      ServiceItem(
+        title: "SOS Pass",
+        icon: Icons.contact_support_rounded,
+        onTap: () => _handleGenericServiceTap("SOS Pass"),
+        key: "TELCO.SERVICES.SOS_PASS",
       ),
     ];
 
@@ -142,6 +225,66 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: () => _handleWithdrawalTap(context),
         key: "OMY.SERVICES.RETRAIT",
       ),
+      ServiceItem(
+        title: "Mastercard",
+        icon: Icons.credit_card_rounded,
+        onTap: () => _handleGenericServiceTap("Mastercard"),
+        key: "OMY.SERVICES.MASTERCARD",
+      ),
+      ServiceItem(
+        title: "S. Financiers",
+        icon: Icons.account_balance_wallet_rounded,
+        onTap: () => _handleGenericServiceTap("Services Financiers"),
+        key: "OMY.SERVICES.FINANCIERS",
+      ),
+      ServiceItem(
+        title: "PI SPI",
+        icon: Icons.public_rounded,
+        onTap: () => _handleGenericServiceTap("Paiement International"),
+        key: "OMY.SERVICES.PI",
+      ),
+      ServiceItem(
+        title: "Inter-Compte",
+        icon: Icons.compare_arrows_rounded,
+        onTap: () => _handleGenericServiceTap("Transfert Inter-Compte"),
+        key: "OMY.SERVICES.INTER_COMPTE",
+      ),
+      ServiceItem(
+        title: "Factures",
+        icon: Icons.receipt_long_rounded,
+        onTap: () => _handleGenericServiceTap("Factures"),
+        key: "OMY.SERVICES.BILLERS",
+      ),
+      ServiceItem(
+        title: "TER / Transport",
+        icon: Icons.train_rounded,
+        onTap: () => _handleGenericServiceTap("TER / Transport"),
+        key: "OMY.SERVICES.BILLERS.TER",
+      ),
+      ServiceItem(
+        title: "TikTak",
+        icon: Icons.monetization_on_rounded,
+        onTap: () => _handleGenericServiceTap("TikTak / Orange Bank"),
+        key: "OBA.SERVICES.TIKTAK",
+      ),
+      ServiceItem(
+        title: "Canal+",
+        icon: Icons.tv_rounded,
+        onTap: () => _handleGenericServiceTap("Canal+"),
+        key: "CANALPLUS",
+      ),
+      ServiceItem(
+        title: "SEN-EAU",
+        icon: Icons.water_drop_rounded,
+        onTap: () => _handleGenericServiceTap("FlexEau"),
+        key: "FLEXEAU",
+      ),
+      ServiceItem(
+        title: "Senelec",
+        icon: Icons.electric_bolt_rounded,
+        onTap: () => _handleGenericServiceTap("Senelec"),
+        key: "SENELEC_MAIN_PAGE",
+      ),
     ];
   }
 
@@ -150,43 +293,66 @@ class _HomeScreenState extends State<HomeScreen> {
       final res = await ApiService.getPersonalization(widget.identifier, widget.token);
       final dataList = res["data"] as List<dynamic>?;
       if (dataList != null && dataList.isNotEmpty) {
-        final profile = dataList.first as Map<String, dynamic>;
-        final source = profile["_source"] as Map<String, dynamic>?;
-        if (source != null) {
-          final String? univers = source["univers"] as String?;
-          final String? mode = source["mode"] as String?;
-          final List<dynamic>? servicesList = source["liste_de_services"] as List<dynamic>?;
+        final Map<String, List<String>> preferredMap = {};
+        String? firstUnivers;
+        String? firstMode;
 
-          if (!mounted) return;
-          setState(() {
-            if (univers == "OMY") {
-              _activeUniverseIndex = 1;
-              _pageController.jumpToPage(1);
-              ApiService.activeUniverse = "OMY";
-            } else if (univers == "TELCO") {
-              _activeUniverseIndex = 0;
-              _pageController.jumpToPage(0);
-              ApiService.activeUniverse = "TELCO";
-            }
+        for (final item in dataList) {
+          final profile = item as Map<String, dynamic>;
+          final source = profile["_source"] as Map<String, dynamic>?;
+          if (source != null) {
+            final String? univers = source["univers"] as String?;
+            final String? mode = source["mode"] as String?;
+            final List<dynamic>? servicesList = source["liste_de_services"] as List<dynamic>?;
 
-            if (mode == "SIMPLE") {
-              _isSimpleMode = true;
-              ApiService.activeMode = "SIMPLE";
-            } else if (mode == "ADVANCE") {
-              _isSimpleMode = false;
-              ApiService.activeMode = "ADVANCE";
-            }
+            if (firstUnivers == null && univers != null) firstUnivers = univers;
+            if (firstMode == null && mode != null) firstMode = mode;
 
             if (servicesList != null && servicesList.isNotEmpty) {
-              final preferredServiceIds = servicesList.map((s) => s.toString()).toList();
-              _preferredServiceIds = preferredServiceIds;
-              
-              // Trier les services selon les préférences HDFS
-              _sortServices(_telcoServices, preferredServiceIds);
-              _sortServices(_omyServices, preferredServiceIds);
+              final services = servicesList.map((s) => s.toString()).toList();
+              if (univers != null && mode != null) {
+                preferredMap["${univers}_$mode"] = services;
+              }
+              if (mode != null && !preferredMap.containsKey(mode)) {
+                preferredMap[mode] = services;
+              }
+              if (univers != null && !preferredMap.containsKey(univers)) {
+                preferredMap[univers] = services;
+              }
             }
-          });
+          }
         }
+
+        if (!mounted) return;
+        setState(() {
+          _preferredServiceIdsMap = preferredMap;
+
+          if (firstUnivers == "OMY") {
+            _activeUniverseIndex = 1;
+            _pageController.jumpToPage(1);
+            ApiService.activeUniverse = "OMY";
+          } else if (firstUnivers == "TELCO") {
+            _activeUniverseIndex = 0;
+            _pageController.jumpToPage(0);
+            ApiService.activeUniverse = "TELCO";
+          }
+
+          if (firstMode == "SIMPLE") {
+            _isSimpleMode = true;
+            ApiService.activeMode = "SIMPLE";
+          } else if (firstMode == "ADVANCE") {
+            _isSimpleMode = false;
+            ApiService.activeMode = "ADVANCE";
+          }
+
+          final currentKey = "${firstUnivers ?? 'OMY'}_${firstMode ?? 'SIMPLE'}";
+          _preferredServiceIds = _preferredServiceIdsMap[currentKey] 
+              ?? _preferredServiceIdsMap[firstMode ?? 'SIMPLE'] 
+              ?? [];
+
+          _sortServices(_telcoServices, _preferredServiceIds);
+          _sortServices(_omyServices, _preferredServiceIds);
+        });
       }
     } catch (e) {
       debugPrint("Erreur lors de la recuperation de la personnalisation: $e");
@@ -240,7 +406,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<ServiceItem> _getFilteredSimpleServices(List<ServiceItem> allServices, String universe) {
     final defaults = _defaultServices[universe] ?? [];
-    final preferred = _preferredServiceIds.where((id) => !defaults.contains(id)).toList();
+    final modeKey = "${universe}_SIMPLE";
+    final preferredList = _preferredServiceIdsMap[modeKey] 
+        ?? _preferredServiceIdsMap["SIMPLE"] 
+        ?? _preferredServiceIds;
+    final preferred = preferredList.where((id) => !defaults.contains(id)).toList();
     
     String? thirdServiceKey;
     if (preferred.isNotEmpty) {
@@ -259,15 +429,15 @@ class _HomeScreenState extends State<HomeScreen> {
     
     if (defaults.isNotEmpty) {
       final s = findService(defaults[0]);
-      if (s != null) result.add(s);
+      if (s != null && !result.contains(s)) result.add(s);
     }
     if (defaults.length > 1) {
       final s = findService(defaults[1]);
-      if (s != null) result.add(s);
+      if (s != null && !result.contains(s)) result.add(s);
     }
     if (thirdServiceKey != null) {
       final s = findService(thirdServiceKey);
-      if (s != null) result.add(s);
+      if (s != null && !result.contains(s)) result.add(s);
     }
     
     for (final s in allServices) {
@@ -282,7 +452,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<ServiceItem> _getFilteredAdvancedServices(List<ServiceItem> allServices, String universe) {
     final defaults = _defaultServicesAdvanced[universe] ?? [];
-    final preferred = _preferredServiceIds.where((id) => !defaults.contains(id)).toList();
+    final modeKey = "${universe}_ADVANCE";
+    final preferredList = _preferredServiceIdsMap[modeKey] 
+        ?? _preferredServiceIdsMap["ADVANCE"] 
+        ?? _preferredServiceIds;
+    final preferred = preferredList.where((id) => !defaults.contains(id)).toList();
     
     final List<String> personalizations = [];
     for (final id in preferred) {
@@ -832,16 +1006,34 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisSpacing: 8,
                   mainAxisSpacing: 8,
                   childAspectRatio: 0.85,
-                  children: _getFilteredAdvancedServices(_telcoServices, "TELCO").map((service) {
-                    return _buildSimpleServiceItem(
+                  children: [
+                    ..._getFilteredAdvancedServices(_telcoServices, "TELCO").map((service) {
+                      return _buildSimpleServiceItem(
+                        context,
+                        service.title,
+                        service.icon,
+                        orangeColor,
+                        darkCardColor,
+                        service.onTap,
+                      );
+                    }),
+                    _buildSimpleServiceItem(
                       context,
-                      service.title,
-                      service.icon,
+                      "Services",
+                      Icons.apps_rounded,
                       orangeColor,
                       darkCardColor,
-                      service.onTap,
-                    );
-                  }).toList(),
+                      () {
+                        _showAllServicesModal(
+                          context,
+                          "TELCO",
+                          _telcoServices,
+                          orangeColor,
+                          darkCardColor,
+                        );
+                      },
+                    ),
+                  ],
                 ),
           const SizedBox(height: 24),
 
@@ -1417,6 +1609,11 @@ class _HomeScreenState extends State<HomeScreen> {
     Color orangeColor,
     Color darkCardColor,
   ) {
+    final visibleServices = _isSimpleMode
+        ? _getFilteredSimpleServices(services, universeName)
+        : _getFilteredAdvancedServices(services, universeName);
+    final remainingServices = services.where((s) => !visibleServices.contains(s)).toList();
+
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
@@ -1459,7 +1656,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
                   childAspectRatio: 0.85,
-                  children: services.skip(3).map((service) {
+                  children: remainingServices.map((service) {
                     return _buildSimpleServiceItem(
                       context,
                       service.title,
@@ -1508,6 +1705,12 @@ class _HomeScreenState extends State<HomeScreen> {
         title: "Achat Illiflex",
         icon: Icons.swap_calls_rounded,
         onTap: () => _handleAchatIlliflexTap(context),
+        key: "OMY.SERVICES.VOICEBUNDLE",
+      ),
+      ServiceItem(
+        title: "Pass Internationaux",
+        icon: Icons.public_rounded,
+        onTap: () => _handlePassInternationalTap(context),
         key: "OMY.SERVICES.VOICEBUNDLE",
       ),
     ];
@@ -1783,6 +1986,32 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text("Retrait d'argent effectué avec succès !"),
+          backgroundColor: const Color(0xFFFF7900),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+  }
+
+  void _handlePassInternationalTap(BuildContext context) async {
+    final success = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AchatInternationalScreen(
+          myNumber: widget.identifier,
+          token: widget.token,
+        ),
+      ),
+    );
+
+    if (success == true && context.mounted) {
+      _refreshData();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Achat de Pass International effectué avec succès !"),
           backgroundColor: const Color(0xFFFF7900),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
