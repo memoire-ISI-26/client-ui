@@ -42,8 +42,8 @@ class _AchatIllimixScreenState extends State<AchatIllimixScreen> {
 
   // UI Categories mapped to periods
   final List<Map<String, String>> _categories = [
-    {"title": "Illimix Jour", "period": "JOUR"},
     {"title": "Illimix Nuit", "period": "NUIT"},
+    {"title": "Illimix Jour", "period": "JOUR"},
     {"title": "Illimix Semaine", "period": "SEMAINE"},
     {"title": "Illimix Mois", "period": "MOIS"},
   ];

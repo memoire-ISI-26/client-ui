@@ -42,10 +42,8 @@ class _AchatInternetScreenState extends State<AchatInternetScreen> {
 
   // UI Categories mapped to periods
   final List<Map<String, String>> _categories = [
-    {"title": "Pass Max it TV Plus", "period": "TV_PLUS"},
-    {"title": "Accès Max it TV", "period": "TV_ACCESS"},
-    {"title": "Jour", "period": "JOUR"},
     {"title": "Nuit", "period": "NUIT"},
+    {"title": "Jour", "period": "JOUR"},
     {"title": "Semaine", "period": "SEMAINE"},
     {"title": "Mois", "period": "MOIS"},
   ];
