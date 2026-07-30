@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
+  static String activeMode = "SIMPLE";
+  static String activeUniverse = "TELCO";
   static String? _cachedBaseUrl;
 
   /// Récupère l'URL de base dynamiquement.
@@ -44,8 +46,7 @@ class ApiService {
     // 4. Repli par défaut selon la plateforme (ex: émulateur Android)
     try {
       if (Platform.isAndroid) {
-        _cachedBaseUrl = 'http://10.96.18.190:8765';
-        //_cachedBaseUrl = 'http://192.168.1.12:8765';
+        _cachedBaseUrl = 'http://your_ip_address:8765';
         return _cachedBaseUrl!;
       }
     } catch (_) {}
@@ -199,22 +200,24 @@ class ApiService {
     required String sender,
     required String receiver,
     required double amount,
+    required String paymentMethod,
     required String token,
   }) async {
     final baseUrlResolved = await getBaseUrl();
-    final url = Uri.parse('$baseUrlResolved/transactions/purchase');
+    final url = Uri.parse('$baseUrlResolved/pricing/purchase/credit');
     try {
       final response = await http.post(
         url,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
+          'X-User-Mode': activeMode,
+          'X-User-Universe': activeUniverse,
         },
         body: jsonEncode({
-          'sender': sender,
-          'receiver': receiver,
+          'receiverNumber': receiver,
           'amount': amount,
-          'type': 'ACHAT_CREDIT',
+          'paymentMethod': paymentMethod,
         }),
       );
 
@@ -271,6 +274,8 @@ class ApiService {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
+          'X-User-Mode': activeMode,
+          'X-User-Universe': activeUniverse,
         },
         body: jsonEncode({
           'receiverNumber': receiverNumber,
@@ -359,6 +364,8 @@ class ApiService {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
+          'X-User-Mode': activeMode,
+          'X-User-Universe': activeUniverse,
         },
         body: jsonEncode({
           'receiverNumber': receiverNumber,
@@ -397,6 +404,73 @@ class ApiService {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
+          'X-User-Mode': activeMode,
+          'X-User-Universe': activeUniverse,
+        },
+        body: jsonEncode({
+          'receiverNumber': receiverNumber,
+          'passId': passId,
+          'passName': passName,
+          'amount': amount,
+          'paymentMethod': paymentMethod,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Échec de l\'achat (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de la validation de la transaction : $e');
+    }
+  }
+
+  /// Récupère tous les pass internationaux.
+  static Future<List<dynamic>> getPassInternational(String token) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/pricing/pass-international');
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['data'] as List<dynamic>;
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Impossible de récupérer les pass internationaux (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de la récupération des pass internationaux : $e');
+    }
+  }
+
+  /// Achète un pass international.
+  static Future<Map<String, dynamic>> purchasePassInternational({
+    required String receiverNumber,
+    required int passId,
+    required String passName,
+    required double amount,
+    required String paymentMethod, // "WALLET" or "CREDIT"
+    required String token,
+  }) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/pricing/purchase/pass-international');
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+          'X-User-Mode': activeMode,
+          'X-User-Universe': activeUniverse,
         },
         body: jsonEncode({
           'receiverNumber': receiverNumber,
@@ -490,6 +564,8 @@ class ApiService {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
+          'X-User-Mode': activeMode,
+          'X-User-Universe': activeUniverse,
         },
         body: jsonEncode({
           'receiverNumber': cardNumber,
@@ -523,6 +599,8 @@ class ApiService {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
+          'X-User-Mode': activeMode,
+          'X-User-Universe': activeUniverse,
         },
         body: jsonEncode({
           'sender': sender,
@@ -556,6 +634,8 @@ class ApiService {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
+          'X-User-Mode': activeMode,
+          'X-User-Universe': activeUniverse,
         },
         body: jsonEncode({
           'number': number,
@@ -588,6 +668,8 @@ class ApiService {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
+          'X-User-Mode': activeMode,
+          'X-User-Universe': activeUniverse,
         },
         body: jsonEncode({
           'number': number,
@@ -651,6 +733,57 @@ class ApiService {
     } catch (e) {
       if (e is Exception) rethrow;
       throw Exception('Erreur lors de la récupération des détails du compte : $e');
+    }
+  }
+
+  /// Récupère le profil de personnalisation utilisateur HDFS (Univers, Services, Mode).
+  static Future<Map<String, dynamic>> getPersonalization(String number, String token) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/personnalisation/usages/$number');
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+          'X-User-Phone': number,
+          'X-User-Role': 'CLIENT',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Impossible de récupérer la personnalisation (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de la récupération de la personnalisation : $e');
+    }
+  }
+
+  /// Récupère la liste des services par défaut (mode simple) pour OMY et TELCO.
+  static Future<List<dynamic>> getDefaultServices(String token) async {
+    final baseUrlResolved = await getBaseUrl();
+    final url = Uri.parse('$baseUrlResolved/personnalisation/default-services');
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        return body["data"] as List<dynamic>;
+      } else {
+        throw Exception(response.body.isNotEmpty ? response.body : 'Impossible de récupérer les services par défaut (Code ${response.statusCode})');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Erreur lors de la récupération des services par défaut : $e');
     }
   }
 }
