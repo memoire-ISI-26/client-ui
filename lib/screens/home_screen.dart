@@ -11,6 +11,8 @@ import 'package:client_ui/screens/withdrawal_screen.dart';
 import 'package:client_ui/screens/rapido_screen.dart';
 import 'package:client_ui/screens/transfert_screen.dart';
 import 'package:client_ui/screens/achat_international_screen.dart';
+import 'package:client_ui/screens/profile_screen.dart';
+import 'package:client_ui/main.dart';
 
 class ServiceItem {
   final String title;
@@ -63,14 +65,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<ServiceItem> _omyServices = [];
   List<String> _preferredServiceIds = [];
   Map<String, List<String>> _preferredServiceIdsMap = {};
-  Map<String, List<String>> _defaultServices = {
-    "OMY": ["OMY.SERVICES.TRANSFERT", "OMY.SERVICES.VOICEBUNDLE"],
-    "TELCO": ["TELCO.SERVICES.PASS.VOICE", "TELCO.SERVICES.PASS.DATA"]
-  };
-  Map<String, List<String>> _defaultServicesAdvanced = {
-    "OMY": ["OMY.SERVICES.TRANSFERT", "OMY.SERVICES.VOICEBUNDLE", "DEPOT", "OMY.SERVICES.RETRAIT", "RAPIDO"],
-    "TELCO": ["TELCO.SERVICES.PASS.VOICE", "TELCO.SERVICES.PASS.DATA", "TELCO.SERVICES.PASS.ILLIMIX", "TELCO.SERVICES.PASS.ILLIFLEX", "TELCO.SERVICES.PASS.VOICE"]
-  };
+  Map<String, List<String>> _defaultServices = {};
+  Map<String, List<String>> _defaultServicesAdvanced = {};
 
   @override
   void initState() {
@@ -618,22 +614,23 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     const orangeColor = Color(0xFFFF7900);
-    const darkBgColor = Color(0xFF121212);
-    const darkCardColor = Color(0xFF1E1E1E);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final darkBgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5);
+    final darkCardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
 
     return Scaffold(
       backgroundColor: darkBgColor,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF8C3200), // Premium dark orange gradient
-              Color(0xFF121212),
-              Color(0xFF121212),
+              isDark ? const Color(0xFF8C3200) : const Color(0xFFFFEAD5),
+              darkBgColor,
+              darkBgColor,
             ],
-            stops: [0.0, 0.45, 1.0],
+            stops: const [0.0, 0.45, 1.0],
           ),
         ),
         child: SafeArea(
@@ -651,11 +648,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         // Left: Settings gear button
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.12),
+                            color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
                             shape: BoxShape.circle,
                           ),
                           child: IconButton(
-                            icon: const Icon(Icons.settings_rounded, color: Colors.white),
+                            icon: Icon(Icons.settings_rounded, color: isDark ? Colors.white : Colors.black87),
                             onPressed: () => _showSettingsBottomSheet(context, darkCardColor, orangeColor),
                           ),
                         ),
@@ -672,7 +669,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             height: 38,
                             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.12),
+                              color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
                               borderRadius: BorderRadius.circular(19),
                             ),
                             child: Row(
@@ -681,36 +678,36 @@ class _HomeScreenState extends State<HomeScreen> {
                                 if (_isSimpleMode) ...[
                                   Container(
                                     padding: const EdgeInsets.all(6),
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF222222),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? const Color(0xFF222222) : Colors.white,
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(Icons.double_arrow_rounded, color: Colors.white, size: 14),
+                                    child: Icon(Icons.double_arrow_rounded, color: isDark ? Colors.white : const Color(0xFFFF7900), size: 14),
                                   ),
                                   const SizedBox(width: 8),
-                                  const Padding(
-                                    padding: EdgeInsets.only(right: 12.0),
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 12.0),
                                     child: Text(
                                       "Simple",
-                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                      style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold, fontSize: 13),
                                     ),
                                   ),
                                 ] else ...[
-                                  const Padding(
-                                    padding: EdgeInsets.only(left: 12.0),
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 12.0),
                                     child: Text(
                                       "Avancé",
-                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                      style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold, fontSize: 13),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
                                   Container(
                                     padding: const EdgeInsets.all(6),
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF222222),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? const Color(0xFF222222) : Colors.white,
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(Icons.keyboard_double_arrow_left_rounded, color: Colors.white, size: 14),
+                                    child: Icon(Icons.keyboard_double_arrow_left_rounded, color: isDark ? Colors.white : const Color(0xFFFF7900), size: 14),
                                   ),
                                 ],
                               ],
@@ -721,11 +718,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         // Right: Search Button
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.12),
+                            color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
                             shape: BoxShape.circle,
                           ),
                           child: IconButton(
-                            icon: const Icon(Icons.search_rounded, color: Colors.white),
+                            icon: Icon(Icons.search_rounded, color: isDark ? Colors.white : Colors.black87),
                             onPressed: () {
                               showSearch(
                                 context: context,
@@ -744,15 +741,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Text(
                         _getObfuscatedPhone(widget.identifier),
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black87,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1.2,
                         ),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
+                      Icon(Icons.keyboard_arrow_down_rounded, color: isDark ? Colors.white : Colors.black87, size: 20),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -1439,6 +1436,11 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (BuildContext context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final sheetTextColor = isDark ? Colors.white : Colors.black87;
+        final sheetIconColor = isDark ? Colors.white70 : Colors.black54;
+        final dividerColor = isDark ? Colors.white12 : Colors.black12;
+
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
@@ -1450,46 +1452,63 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(
-                    color: Colors.grey[600],
+                    color: isDark ? Colors.grey[600] : Colors.grey[400],
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const Text(
+                Text(
                   "Paramètres",
                   style: TextStyle(
-                    color: Colors.white,
+                    color: sheetTextColor,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 16),
                 ListTile(
-                  leading: const Icon(Icons.person_outline_rounded, color: Colors.white70),
-                  title: const Text("Mon Profil", style: TextStyle(color: Colors.white)),
+                  leading: Icon(Icons.person_outline_rounded, color: sheetIconColor),
+                  title: Text("Mon Profil", style: TextStyle(color: sheetTextColor)),
                   onTap: () {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Profil bientôt disponible"),
-                        backgroundColor: Colors.white24,
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProfileScreen(
+                          myNumber: widget.identifier,
+                          token: widget.token,
+                        ),
                       ),
                     );
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.notifications_none_rounded, color: Colors.white70),
-                  title: const Text("Notifications", style: TextStyle(color: Colors.white)),
+                  leading: Icon(
+                    isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                    color: sheetIconColor,
+                  ),
+                  title: Text(
+                    isDark ? "Mode Clair" : "Mode Sombre",
+                    style: TextStyle(color: sheetTextColor),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    themeNotifier.value = isDark ? ThemeMode.light : ThemeMode.dark;
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.notifications_none_rounded, color: sheetIconColor),
+                  title: Text("Notifications", style: TextStyle(color: sheetTextColor)),
                   onTap: () {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Notifications bientôt disponibles"),
-                        backgroundColor: Colors.white24,
+                      SnackBar(
+                        content: const Text("Notifications bientôt disponibles"),
+                        backgroundColor: isDark ? Colors.white24 : Colors.black54,
                       ),
                     );
                   },
                 ),
-                const Divider(color: Colors.white12),
+                Divider(color: dividerColor),
                 ListTile(
                   leading: const Icon(Icons.logout_rounded, color: Colors.redAccent),
                   title: const Text(
@@ -1589,8 +1608,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
