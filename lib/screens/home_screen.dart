@@ -101,25 +101,25 @@ class _HomeScreenState extends State<HomeScreen> {
       ServiceItem(
         title: "Pass Illiflex",
         icon: Icons.swap_calls_rounded,
-        onTap: () => _handleAchatIlliflexTap(context),
+        onTap: () => _handleAchatIlliflexTap(context, "TELCO.SERVICES.PASS.ILLIFLEX"),
         key: "TELCO.SERVICES.PASS.ILLIFLEX",
       ),
       ServiceItem(
         title: "Pass Illimix",
         icon: Icons.all_inclusive_rounded,
-        onTap: () => _handleAchatIllimixTap(context),
+        onTap: () => _handleAchatIllimixTap(context, "TELCO.SERVICES.PASS.ILLIMIX"),
         key: "TELCO.SERVICES.PASS.ILLIMIX",
       ),
       ServiceItem(
         title: "Pass Internet",
         icon: Icons.language_rounded,
-        onTap: () => _handleAchatInternetTap(context),
+        onTap: () => _handleAchatInternetTap(context, "TELCO.SERVICES.PASS.DATA"),
         key: "TELCO.SERVICES.PASS.DATA",
       ),
       ServiceItem(
         title: "Pass Internationaux",
         icon: Icons.language_rounded,
-        onTap: () => _handlePassInternationalTap(context),
+        onTap: () => _handlePassInternationalTap(context, "TELCO.SERVICES.PASS.INTERNATIONAL"),
         key: "TELCO.SERVICES.PASS.INTERNATIONAL",
       ),
       ServiceItem(
@@ -284,8 +284,22 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
   }
 
+  Map<String, List<String>> _dqnRecommendedMap = {};
+
   Future<void> _fetchPersonalization() async {
     try {
+      final dqnResults = await Future.wait([
+        ApiService.getDqnRecommendations(widget.identifier, widget.token, univers: "TELCO", mode: "SIMPLE"),
+        ApiService.getDqnRecommendations(widget.identifier, widget.token, univers: "TELCO", mode: "ADVANCE"),
+        ApiService.getDqnRecommendations(widget.identifier, widget.token, univers: "OMY", mode: "SIMPLE"),
+        ApiService.getDqnRecommendations(widget.identifier, widget.token, univers: "OMY", mode: "ADVANCE"),
+      ]);
+
+      _dqnRecommendedMap["TELCO_SIMPLE"] = dqnResults[0];
+      _dqnRecommendedMap["TELCO_ADVANCE"] = dqnResults[1];
+      _dqnRecommendedMap["OMY_SIMPLE"] = dqnResults[2];
+      _dqnRecommendedMap["OMY_ADVANCE"] = dqnResults[3];
+
       final res = await ApiService.getPersonalization(widget.identifier, widget.token);
       final dataList = res["data"] as List<dynamic>?;
       if (dataList != null && dataList.isNotEmpty) {
@@ -342,9 +356,16 @@ class _HomeScreenState extends State<HomeScreen> {
           }
 
           final currentKey = "${firstUnivers ?? 'OMY'}_${firstMode ?? 'SIMPLE'}";
-          _preferredServiceIds = _preferredServiceIdsMap[currentKey] 
+          final basePreferred = _preferredServiceIdsMap[currentKey] 
               ?? _preferredServiceIdsMap[firstMode ?? 'SIMPLE'] 
               ?? [];
+
+          final dqnForCurrent = _dqnRecommendedMap[currentKey] ?? [];
+          final combined = [...dqnForCurrent];
+          for (final s in basePreferred) {
+            if (!combined.contains(s)) combined.add(s);
+          }
+          _preferredServiceIds = combined;
 
           _sortServices(_telcoServices, _preferredServiceIds);
           _sortServices(_omyServices, _preferredServiceIds);
@@ -403,10 +424,15 @@ class _HomeScreenState extends State<HomeScreen> {
   List<ServiceItem> _getFilteredSimpleServices(List<ServiceItem> allServices, String universe) {
     final defaults = _defaultServices[universe] ?? [];
     final modeKey = "${universe}_SIMPLE";
-    final preferredList = _preferredServiceIdsMap[modeKey] 
+    final dqnList = _dqnRecommendedMap[modeKey] ?? [];
+    final hdfsPreferred = _preferredServiceIdsMap[modeKey] 
         ?? _preferredServiceIdsMap["SIMPLE"] 
         ?? _preferredServiceIds;
-    final preferred = preferredList.where((id) => !defaults.contains(id)).toList();
+    final combinedPreferred = [...dqnList];
+    for (final id in hdfsPreferred) {
+      if (!combinedPreferred.contains(id)) combinedPreferred.add(id);
+    }
+    final preferred = combinedPreferred.where((id) => !defaults.contains(id)).toList();
     
     String? thirdServiceKey;
     if (preferred.isNotEmpty) {
@@ -449,10 +475,15 @@ class _HomeScreenState extends State<HomeScreen> {
   List<ServiceItem> _getFilteredAdvancedServices(List<ServiceItem> allServices, String universe) {
     final defaults = _defaultServicesAdvanced[universe] ?? [];
     final modeKey = "${universe}_ADVANCE";
-    final preferredList = _preferredServiceIdsMap[modeKey] 
+    final dqnList = _dqnRecommendedMap[modeKey] ?? [];
+    final hdfsPreferred = _preferredServiceIdsMap[modeKey] 
         ?? _preferredServiceIdsMap["ADVANCE"] 
         ?? _preferredServiceIds;
-    final preferred = preferredList.where((id) => !defaults.contains(id)).toList();
+    final combinedPreferred = [...dqnList];
+    for (final id in hdfsPreferred) {
+      if (!combinedPreferred.contains(id)) combinedPreferred.add(id);
+    }
+    final preferred = combinedPreferred.where((id) => !defaults.contains(id)).toList();
     
     final List<String> personalizations = [];
     for (final id in preferred) {
@@ -976,6 +1007,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         orangeColor,
                         darkCardColor,
                         service.onTap,
+                        serviceKey: service.key,
                       );
                     }),
                     _buildSimpleServiceItem(
@@ -1012,6 +1044,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         orangeColor,
                         darkCardColor,
                         service.onTap,
+                        serviceKey: service.key,
                       );
                     }),
                     _buildSimpleServiceItem(
@@ -1200,6 +1233,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         orangeColor,
                         darkCardColor,
                         service.onTap,
+                        serviceKey: service.key,
                       );
                     }),
                     _buildSimpleServiceItem(
@@ -1236,6 +1270,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         orangeColor,
                         darkCardColor,
                         service.onTap,
+                        serviceKey: service.key,
                       );
                     }),
                     _buildSimpleServiceItem(
@@ -1580,42 +1615,88 @@ class _HomeScreenState extends State<HomeScreen> {
     IconData icon,
     Color orangeColor,
     Color darkCardColor,
-    VoidCallback onTap,
-  ) {
+    VoidCallback onTap, {
+    String? serviceKey,
+  }) {
+    final String currentKey = "${ApiService.activeUniverse}_${ApiService.activeMode}";
+    final List<String> activeDqnRecs = _dqnRecommendedMap[currentKey] ?? [];
+    final bool isDqnRecommended = serviceKey != null && activeDqnRecs.take(3).contains(serviceKey);
+
     return Card(
       margin: EdgeInsets.zero,
       color: darkCardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey[800]!, width: 0.5),
+        side: BorderSide(
+          color: isDqnRecommended ? orangeColor : (Colors.grey[800]!), 
+          width: isDqnRecommended ? 1.2 : 0.5
+        ),
       ),
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          if (serviceKey != null && serviceKey.isNotEmpty) {
+            ApiService.sendDqnReward(
+              msisdn: widget.identifier,
+              serviceId: serviceKey,
+              reward: 0.5,
+              token: widget.token,
+              univers: ApiService.activeUniverse,
+              mode: ApiService.activeMode,
+            );
+          }
+          onTap();
+        },
         borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                color: orangeColor,
-                size: 24,
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Center(
+                    child: Icon(
+                      icon,
+                      color: orangeColor,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
+            ),
+            if (isDqnRecommended)
+              Positioned(
+                top: 2,
+                right: 2,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: orangeColor,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    "🤖 IA",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 7,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -1686,6 +1767,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Navigator.pop(context); // Fermer le modal
                         service.onTap(); // Executer l'action
                       },
+                      serviceKey: service.key,
                     );
                   }).toList(),
                 ),
@@ -1711,25 +1793,25 @@ class _HomeScreenState extends State<HomeScreen> {
       ServiceItem(
         title: "Achat Illimix",
         icon: Icons.all_inclusive_rounded,
-        onTap: () => _handleAchatIllimixTap(context),
+        onTap: () => _handleAchatIllimixTap(context, "OMY.SERVICES.VOICEBUNDLE"),
         key: "OMY.SERVICES.VOICEBUNDLE",
       ),
       ServiceItem(
         title: "Achat Internet",
         icon: Icons.language_rounded,
-        onTap: () => _handleAchatInternetTap(context),
+        onTap: () => _handleAchatInternetTap(context, "OMY.SERVICES.VOICEBUNDLE"),
         key: "OMY.SERVICES.VOICEBUNDLE",
       ),
       ServiceItem(
         title: "Achat Illiflex",
         icon: Icons.swap_calls_rounded,
-        onTap: () => _handleAchatIlliflexTap(context),
+        onTap: () => _handleAchatIlliflexTap(context, "OMY.SERVICES.VOICEBUNDLE"),
         key: "OMY.SERVICES.VOICEBUNDLE",
       ),
       ServiceItem(
         title: "Pass Internationaux",
         icon: Icons.public_rounded,
-        onTap: () => _handlePassInternationalTap(context),
+        onTap: () => _handlePassInternationalTap(context, "OMY.SERVICES.VOICEBUNDLE"),
         key: "OMY.SERVICES.VOICEBUNDLE",
       ),
     ];
@@ -1787,6 +1869,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Navigator.pop(context); // Fermer le modal
                         service.onTap(); // Executer l'action
                       },
+                      serviceKey: service.key,
                     );
                   }).toList(),
                 ),
@@ -1833,7 +1916,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _handleAchatInternetTap(BuildContext context) async {
+  void _handleAchatInternetTap(BuildContext context, String serviceKey) async {
     final success = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -1859,7 +1942,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _handleAchatIllimixTap(BuildContext context) async {
+  void _handleAchatIllimixTap(BuildContext context, String serviceKey) async {
     final success = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -1885,7 +1968,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _handleAchatIlliflexTap(BuildContext context) async {
+  void _handleAchatIlliflexTap(BuildContext context, String serviceKey) async {
     final success = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -2015,7 +2098,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _handlePassInternationalTap(BuildContext context) async {
+  void _handlePassInternationalTap(BuildContext context, String serviceKey) async {
     final success = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
