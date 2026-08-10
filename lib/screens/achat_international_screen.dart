@@ -326,6 +326,16 @@ class _AchatInternationalScreenState extends State<AchatInternationalScreen> {
         token: widget.token,
       );
 
+      // DQN Reward (+1.0 pour achat effectué)
+      ApiService.sendDqnReward(
+        msisdn: widget.myNumber,
+        serviceId: "TELCO.SERVICES.PASS.INTERNATIONAL",
+        reward: 1.0,
+        token: widget.token,
+        univers: ApiService.activeUniverse,
+        mode: ApiService.activeMode,
+      );
+
       if (mounted) {
         Navigator.pop(context); // Close confirmation dialog
         Navigator.pop(context, true); // Return to home screen indicating success

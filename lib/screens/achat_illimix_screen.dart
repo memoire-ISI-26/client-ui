@@ -403,6 +403,16 @@ class _AchatIllimixScreenState extends State<AchatIllimixScreen> {
         token: widget.token,
       );
 
+      // DQN Reward (+1.0 pour achat effectué)
+      ApiService.sendDqnReward(
+        msisdn: widget.myNumber,
+        serviceId: "TELCO.SERVICES.PASS.ILLIMIX",
+        reward: 1.0,
+        token: widget.token,
+        univers: ApiService.activeUniverse,
+        mode: ApiService.activeMode,
+      );
+
       if (mounted) {
         Navigator.pop(context); // Close confirmation dialog
         Navigator.pop(context, true); // Return to home screen indicating success

@@ -270,6 +270,16 @@ class _TransfertScreenState extends State<TransfertScreen> {
         token: widget.token,
       );
 
+      // DQN Reward (+1.0 pour transaction effectuée)
+      ApiService.sendDqnReward(
+        msisdn: widget.myNumber,
+        serviceId: "OMY.SERVICES.TRANSFERT",
+        reward: 1.0,
+        token: widget.token,
+        univers: ApiService.activeUniverse,
+        mode: ApiService.activeMode,
+      );
+
       if (mounted) {
         Navigator.pop(context); // Close confirmation
         Navigator.pop(context, true); // Return to homepage with success

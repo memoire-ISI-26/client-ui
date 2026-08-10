@@ -188,6 +188,16 @@ class _DepositScreenState extends State<DepositScreen> {
         token: widget.token,
       );
 
+      // DQN Reward (+1.0 pour transaction effectuée)
+      ApiService.sendDqnReward(
+        msisdn: widget.myNumber,
+        serviceId: "DEPOT",
+        reward: 1.0,
+        token: widget.token,
+        univers: ApiService.activeUniverse,
+        mode: ApiService.activeMode,
+      );
+
       if (mounted) {
         Navigator.pop(context); // Close dialog
         Navigator.pop(context, true); // Return to home with success
